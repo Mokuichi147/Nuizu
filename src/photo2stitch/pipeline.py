@@ -9,7 +9,6 @@ v0.2: Added pull compensation, auto fill angle, enhanced preprocessing,
 
 import cv2
 import numpy as np
-from PIL import Image
 from typing import List, Tuple, Optional
 import sys
 import os
@@ -39,6 +38,16 @@ FORMAT_WRITERS = {
     '.pes': write_pes,
     '.jef': write_jef,
 }
+
+
+MONOCHROME_THREAD_PALETTE = [
+    (0, 0, 0, "Black"),
+    (64, 64, 64, "Dark Gray"),
+    (128, 128, 128, "Gray"),
+    (192, 192, 192, "Light Gray"),
+    (230, 230, 230, "Off White"),
+    (255, 255, 255, "White"),
+]
 
 
 def convert_photo_to_embroidery(
@@ -118,12 +127,44 @@ def convert_photo_to_embroidery(
         h, w = img_rgb.shape[:2]
         log(f"  Auto-cropped to: {w}x{h}px")
 
+    style = _analyze_image_style(img_rgb)
+    line_art_mode = style["is_line_art"]
+    monochrome_mode = style["is_monochrome"]
+
+    if line_art_mode:
+        log("  Line-art mode detected: preserving fine strokes")
+        if enhance_photo:
+            enhance_photo = False
+            log("  Line-art mode: disabled enhancement pipeline")
+        if blur_radius > 0:
+            blur_radius = 0
+            log("  Line-art mode: blur disabled")
+        if min_region_ratio >= 0.003:
+            min_region_ratio = 0.00001
+            log("  Line-art mode: min-region set to 0.00001")
+        if n_colors >= 8:
+            n_colors = 6
+            log("  Line-art mode: colors reduced to 6")
+        if underlay:
+            underlay = False
+            log("  Line-art mode: underlay disabled")
+
     # Detect background
     bg_color = None
     if skip_background:
-        bg_color = detect_background(img_rgb)
+        bg_color = detect_background(img_rgb, method='corner')
+        if bg_color is None:
+            bg_color = detect_background(img_rgb, method='edge')
         if bg_color:
             log(f"  Background detected: RGB{bg_color}")
+    elif line_art_mode:
+        auto_bg = detect_background(img_rgb, method='corner')
+        if auto_bg is None:
+            auto_bg = detect_background(img_rgb, method='edge')
+        if auto_bg is not None and min(auto_bg) >= 220:
+            skip_background = True
+            bg_color = auto_bg
+            log(f"  Line-art mode: auto-skip background RGB{bg_color}")
 
     # Calculate dimensions
     if target_height_mm is None:
@@ -160,25 +201,40 @@ def convert_photo_to_embroidery(
     log(f"[3/7] Quantizing to {n_colors} colors (palette: {thread_brand})...")
     custom_pal = None
     if use_thread_palette:
-        custom_pal = get_palette(thread_brand)
+        if line_art_mode and monochrome_mode:
+            custom_pal = MONOCHROME_THREAD_PALETTE
+            log("  Line-art mode: using monochrome palette")
+        else:
+            custom_pal = get_palette(thread_brand)
 
     label_map, palette = quantize_colors(
         img_rgb, n_colors, use_thread_palette,
         custom_palette=custom_pal,
     )
-    label_map = remove_small_regions(label_map, min_region_ratio)
+    if line_art_mode:
+        log("  Line-art mode: small-region merge disabled")
+    else:
+        label_map = remove_small_regions(label_map, min_region_ratio)
     log(f"  Palette: {len(palette)} colors")
 
     # 4. Region segmentation
     log("[4/7] Segmenting regions...")
-    min_area = int(h * w * min_region_ratio)
-    regions = extract_regions(label_map, palette, min_area=min_area)
+    min_area = max(1, int(h * w * min_region_ratio))
+    regions = extract_regions(
+        label_map,
+        palette,
+        min_area=min_area,
+        morph_cleanup=not line_art_mode,
+        simplify_epsilon_min=0.25 if line_art_mode else 1.0,
+    )
 
     # Filter out background regions
     if skip_background and bg_color:
+        bg_distance_threshold = 90.0 if line_art_mode else 60.0
         before = len(regions)
         regions = [r for r in regions
-                   if _color_distance(r.color_rgb, bg_color) > 60]
+                   if _color_distance(r.color_rgb, bg_color)
+                   > bg_distance_threshold]
         log(f"  Skipped {before - len(regions)} background regions")
 
     log(f"  Found {len(regions)} regions")
@@ -211,6 +267,8 @@ def convert_photo_to_embroidery(
     current_color = None
     total_regions = len(regions)
     comp_mm = pull_compensation
+    image_area_px = max(1, h * w)
+    line_art_fill_skipped = 0
 
     for i, region in enumerate(regions):
         if region.contour_mm is None:
@@ -245,42 +303,53 @@ def convert_photo_to_embroidery(
         if comp_mm > 0:
             contour = apply_pull_compensation(contour, comp_mm)
 
-        # Generate fill stitches
-        fill_pts = generate_fill_stitches(
-            contour=contour,
-            holes=holes,
-            fill_angle=region_angle,
-            row_spacing=fill_density,
-            stitch_length=stitch_length,
-            underlay=underlay,
+        # For line-art style, skip fills on bright regions to avoid
+        # full-panel hatching while preserving dark strokes.
+        region_luma = sum(region.color_rgb) / 3.0
+        is_large_region = (region.area / image_area_px) >= 0.02
+        skip_fill = (
+            line_art_mode
+            and monochrome_mode
+            and (region_luma >= 120.0 or is_large_region)
         )
-
-        if not fill_pts:
-            continue
-
-        # Apply fill compensation
-        if comp_mm > 0:
-            fill_pts = apply_fill_compensation(
-                fill_pts, contour, comp_mm, region_angle
+        if skip_fill:
+            line_art_fill_skipped += 1
+            fill_pts = []
+        else:
+            fill_pts = generate_fill_stitches(
+                contour=contour,
+                holes=holes,
+                fill_angle=region_angle,
+                row_spacing=fill_density,
+                stitch_length=stitch_length,
+                underlay=underlay,
             )
 
-        # Split long stitches
-        fill_pts = split_long_stitches(fill_pts, max_length=7.0)
+            # Apply fill compensation
+            if comp_mm > 0 and fill_pts:
+                fill_pts = apply_fill_compensation(
+                    fill_pts, contour, comp_mm, region_angle
+                )
 
-        # Jump to first stitch
-        if pattern.stitches:
-            pattern.add_stitch(fill_pts[0][0], fill_pts[0][1],
-                               StitchType.JUMP)
+        if fill_pts:
+            # Split long stitches
+            fill_pts = split_long_stitches(fill_pts, max_length=7.0)
 
-        # Add fill stitches
-        for x, y in fill_pts:
-            pattern.add_stitch(x, y, StitchType.NORMAL)
+            # Jump to first stitch
+            if pattern.stitches:
+                pattern.add_stitch(fill_pts[0][0], fill_pts[0][1],
+                                   StitchType.JUMP)
+
+            # Add fill stitches
+            for x, y in fill_pts:
+                pattern.add_stitch(x, y, StitchType.NORMAL)
 
         # Outline stitches
         if outline and region.contour_mm is not None:
+            outline_stitch_len = 1.2 if line_art_mode else 2.5
             outline_pts = generate_outline_stitches(
                 contour=region.contour_mm,
-                stitch_length=2.5,
+                stitch_length=outline_stitch_len,
                 satin_width=1.2,
                 satin=outline_satin,
             )
@@ -290,6 +359,57 @@ def convert_photo_to_embroidery(
                                    StitchType.JUMP)
                 for x, y in outline_pts:
                     pattern.add_stitch(x, y, StitchType.NORMAL)
+
+    if line_art_mode and line_art_fill_skipped > 0:
+        log(
+            "  Line-art mode: skipped fill on "
+            f"{line_art_fill_skipped} bright/large regions"
+        )
+
+    if line_art_mode:
+        detail_contours = _extract_small_ink_contours(img_rgb)
+        detail_added = 0
+        if detail_contours:
+            black_rgb = (0, 0, 0)
+            if black_rgb not in color_set:
+                color_set[black_rgb] = ThreadColor(
+                    r=0, g=0, b=0,
+                    name=f"Color {len(color_set) + 1}",
+                )
+                pattern.colors = list(color_set.values())
+
+            if current_color != black_rgb:
+                if current_color is not None:
+                    pattern.add_trim()
+                    pattern.add_color_change()
+                current_color = black_rgb
+
+            scale_x = target_width_mm / w
+            scale_y = target_height_mm / h
+
+            for contour_px in detail_contours:
+                contour_mm = contour_px.copy()
+                contour_mm[:, 0] *= scale_x
+                contour_mm[:, 1] *= scale_y
+
+                detail_pts = generate_outline_stitches(
+                    contour=contour_mm,
+                    stitch_length=0.9,
+                    satin=False,
+                )
+                if len(detail_pts) < 2:
+                    continue
+
+                if pattern.stitches:
+                    pattern.add_stitch(
+                        detail_pts[0][0], detail_pts[0][1], StitchType.JUMP
+                    )
+                for x, y in detail_pts:
+                    pattern.add_stitch(x, y, StitchType.NORMAL)
+                detail_added += 1
+
+        if detail_added > 0:
+            log(f"  Line-art mode: reinforced {detail_added} fine contours")
 
     # End
     pattern.add_stitch(0, 0, StitchType.END)
@@ -366,6 +486,70 @@ def generate_preview(pattern: EmbroideryPattern,
         prev_x, prev_y = px, py
 
     cv2.imwrite(output_path, img)
+
+
+def _analyze_image_style(image_rgb: np.ndarray) -> dict:
+    """Analyze image characteristics to detect line-art inputs."""
+    bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+
+    saturation = hsv[:, :, 1]
+    low_sat_ratio = float(np.mean(saturation < 30))
+
+    edges = cv2.Canny(gray, 60, 180)
+    edge_ratio = float(np.mean(edges > 0))
+    bright_ratio = float(np.mean(gray > 200))
+    dark_ratio = float(np.mean(gray < 60))
+
+    is_monochrome = low_sat_ratio > 0.95
+    is_line_art = (
+        is_monochrome
+        and edge_ratio > 0.03
+        and bright_ratio > 0.25
+        and dark_ratio > 0.01
+    )
+
+    return {
+        "is_monochrome": is_monochrome,
+        "is_line_art": is_line_art,
+    }
+
+
+def _extract_small_ink_contours(
+    image_rgb: np.ndarray,
+    min_area_px: float = 1.0,
+    max_area_px: float = 600.0,
+) -> List[np.ndarray]:
+    """Extract small dark contours to reinforce missing fine details."""
+    gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+    _, ink_mask = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+    )
+
+    contours, _ = cv2.findContours(
+        ink_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE
+    )
+
+    detail_contours = []
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < min_area_px or area > max_area_px:
+            continue
+
+        perimeter = cv2.arcLength(contour, True)
+        if perimeter < 4.0:
+            continue
+
+        epsilon = max(0.15, 0.0015 * perimeter)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        points = approx.reshape(-1, 2).astype(np.float64)
+        if len(points) < 2:
+            continue
+
+        detail_contours.append(points)
+
+    return detail_contours
 
 
 def _color_distance(c1: Tuple[int, int, int],

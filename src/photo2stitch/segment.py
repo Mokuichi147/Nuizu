@@ -27,7 +27,9 @@ class Region:
 
 def extract_regions(label_map: np.ndarray,
                     palette: List[Tuple[int, int, int]],
-                    min_area: int = 50
+                    min_area: int = 50,
+                    morph_cleanup: bool = True,
+                    simplify_epsilon_min: float = 1.0,
                     ) -> List[Region]:
     """Extract color regions from quantized label map.
 
@@ -35,6 +37,8 @@ def extract_regions(label_map: np.ndarray,
         label_map: (H, W) integer array of color indices.
         palette: List of (R, G, B) color tuples.
         min_area: Minimum region area in pixels to keep.
+        morph_cleanup: Apply morphological cleanup to masks.
+        simplify_epsilon_min: Minimum contour simplification epsilon.
 
     Returns:
         List of Region objects sorted by area (largest first).
@@ -48,10 +52,11 @@ def extract_regions(label_map: np.ndarray,
         if mask.sum() == 0:
             continue
 
-        # Morphological cleanup: close small gaps, smooth edges
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        if morph_cleanup:
+            # Morphological cleanup: close small gaps, smooth edges
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
         # Find contours with hierarchy
         contours, hierarchy = cv2.findContours(
@@ -75,7 +80,8 @@ def extract_regions(label_map: np.ndarray,
                 continue
 
             # Simplify contour
-            epsilon = max(1.0, 0.001 * cv2.arcLength(contour, True))
+            epsilon = max(simplify_epsilon_min,
+                          0.001 * cv2.arcLength(contour, True))
             approx = cv2.approxPolyDP(contour, epsilon, True)
             outer = approx.reshape(-1, 2).astype(np.float64)
 
@@ -89,7 +95,8 @@ def extract_regions(label_map: np.ndarray,
                 hole_contour = contours[child_idx]
                 hole_area = cv2.contourArea(hole_contour)
                 if hole_area >= min_area * 0.5:
-                    eps_h = max(1.0, 0.001 * cv2.arcLength(hole_contour, True))
+                    eps_h = max(simplify_epsilon_min,
+                                0.001 * cv2.arcLength(hole_contour, True))
                     hole_approx = cv2.approxPolyDP(hole_contour, eps_h, True)
                     hole_pts = hole_approx.reshape(-1, 2).astype(np.float64)
                     if len(hole_pts) >= 3:

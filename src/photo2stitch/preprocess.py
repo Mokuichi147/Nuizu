@@ -196,7 +196,20 @@ def detect_background(image: np.ndarray,
     variance = np.std(corners, axis=0).mean()
 
     if variance < 50:  # Consistent background detected
-        return tuple(mean_color)
+        return tuple(int(c) for c in mean_color)
+
+    # Fallback for line-art/comic images:
+    # even with black frame lines, a strongly dominant bright tone
+    # usually represents the fabric/background color.
+    luminance = (
+        corners[:, 0].astype(np.float32) * 0.299
+        + corners[:, 1].astype(np.float32) * 0.587
+        + corners[:, 2].astype(np.float32) * 0.114
+    )
+    bright_mask = luminance >= 235
+    if bright_mask.mean() >= 0.55:
+        bright_color = np.median(corners[bright_mask], axis=0).astype(int)
+        return tuple(int(c) for c in bright_color)
 
     return None
 
