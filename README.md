@@ -13,24 +13,24 @@ JANOME、Brother、その他主要刺繍機向けの出力形式に対応。
 
 ## 必要環境
 
-- Python 3.10+
-- numpy, opencv-python, pillow, scikit-learn
+- `uv`
+- Python 3.12.10+（`pyproject.toml`準拠）
 
 ```bash
-pip install numpy opencv-python pillow scikit-learn
+uv sync
 ```
 
 ## クイックスタート
 
 ```bash
 # 基本変換（JANOME JEF形式）
-python -m photo2stitch photo.jpg output.jef
+uv run photo2stitch photo.jpg output.jef
 
 # 12色、幅150mmで変換 + プレビュー生成
-python -m photo2stitch photo.png design.jef --colors 12 --width 150 --preview both
+uv run photo2stitch photo.png design.jef --colors 12 --width 150 --preview both
 
 # フル機能（自動角度、プルコンペンセーション、背景スキップ）
-python -m photo2stitch photo.jpg design.dst \
+uv run photo2stitch photo.jpg design.dst \
   --auto-angle --pull-comp 0.3 --skip-bg --preview svg
 ```
 
@@ -155,7 +155,7 @@ src/photo2stitch/
 
 ```bash
 # JANOME JEF形式、8色、幅100mm
-python -m photo2stitch portrait.jpg portrait.jef \
+uv run photo2stitch portrait.jpg portrait.jef \
   --palette janome --colors 8 --width 100 \
   --auto-angle --pull-comp 0.3 --preview both
 ```
@@ -164,7 +164,7 @@ python -m photo2stitch portrait.jpg portrait.jef \
 
 ```bash
 # 背景自動検出＋スキップ、自動クロップ
-python -m photo2stitch flower.jpg flower.dst \
+uv run photo2stitch flower.jpg flower.dst \
   --skip-bg --auto-crop --colors 6 --preview png
 ```
 
@@ -172,7 +172,7 @@ python -m photo2stitch flower.jpg flower.dst \
 
 ```bash
 # 密度0.25mm、ステッチ長2.5mm、サテンアウトライン
-python -m photo2stitch logo.png logo.pes \
+uv run photo2stitch logo.png logo.pes \
   --density 0.25 --stitch-length 2.5 --satin-outline \
   --pull-comp 0.4 --colors 10
 ```
@@ -181,7 +181,7 @@ python -m photo2stitch logo.png logo.pes \
 
 ```bash
 # アンダーレイ・アウトライン・強調処理なし
-python -m photo2stitch photo.jpg quick.dst \
+uv run photo2stitch photo.jpg quick.dst \
   --no-underlay --no-outline --no-enhance --colors 4
 ```
 
