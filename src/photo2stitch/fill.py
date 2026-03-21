@@ -75,31 +75,65 @@ def generate_fill_stitches(
     Returns:
         List of (x, y) stitch coordinates in mm.
     """
+    segments = generate_fill_stitch_segments(
+        contour=contour,
+        holes=holes,
+        fill_angle=fill_angle,
+        row_spacing=row_spacing,
+        stitch_length=stitch_length,
+        stagger_offset=stagger_offset,
+        underlay=underlay,
+        underlay_angle_offset=underlay_angle_offset,
+        underlay_spacing=underlay_spacing,
+    )
+
+    stitches = []
+    for segment in segments:
+        stitches.extend(segment)
+    return stitches
+
+
+def generate_fill_stitch_segments(
+    contour: np.ndarray,
+    holes: List[np.ndarray],
+    fill_angle: float = 0.0,
+    row_spacing: float = 0.4,
+    stitch_length: float = 3.0,
+    stagger_offset: float = 0.5,
+    underlay: bool = True,
+    underlay_angle_offset: float = 90.0,
+    underlay_spacing: float = 1.5,
+) -> List[List[Tuple[float, float]]]:
+    """Generate fill stitches as separate segments.
+
+    Each disconnected span is returned as an independent segment so
+    callers can insert jump stitches between spans.
+    """
     if len(contour) < 3:
         return []
 
-    all_stitches = []
+    all_segments: List[List[Tuple[float, float]]] = []
 
     if underlay:
-        underlay_pts = _rotated_scanline_fill(
+        underlay_segments = _rotated_scanline_fill_segments(
             contour, holes,
             angle=fill_angle + underlay_angle_offset,
             spacing=underlay_spacing,
             stitch_length=stitch_length * 1.5,
             stagger=0.0,
         )
-        all_stitches.extend(underlay_pts)
+        all_segments.extend(underlay_segments)
 
-    fill_pts = _rotated_scanline_fill(
+    fill_segments = _rotated_scanline_fill_segments(
         contour, holes,
         angle=fill_angle,
         spacing=row_spacing,
         stitch_length=stitch_length,
         stagger=stagger_offset * stitch_length,
     )
-    all_stitches.extend(fill_pts)
+    all_segments.extend(fill_segments)
 
-    return all_stitches
+    return all_segments
 
 
 def _rotate_points(pts: np.ndarray, angle_deg: float,
@@ -123,6 +157,29 @@ def _rotated_scanline_fill(
     stitch_length: float,
     stagger: float,
 ) -> List[Tuple[float, float]]:
+    """Backward-compatible flat fill output."""
+    segments = _rotated_scanline_fill_segments(
+        contour=contour,
+        holes=holes,
+        angle=angle,
+        spacing=spacing,
+        stitch_length=stitch_length,
+        stagger=stagger,
+    )
+    stitches = []
+    for segment in segments:
+        stitches.extend(segment)
+    return stitches
+
+
+def _rotated_scanline_fill_segments(
+    contour: np.ndarray,
+    holes: List[np.ndarray],
+    angle: float,
+    spacing: float,
+    stitch_length: float,
+    stagger: float,
+) -> List[List[Tuple[float, float]]]:
     """Fill region with scanlines at given angle.
 
     Rotate polygon so scanlines are horizontal, fill, rotate back.
@@ -143,7 +200,7 @@ def _rotated_scanline_fill(
     stitch_step_px = max(1, int(stitch_length * ppm))
     stagger_px = int(stagger * ppm) if stagger else 0
 
-    stitches_rotated = []
+    segments_rotated: List[List[Tuple[float, float]]] = []
     reverse = False
 
     for row in range(0, h, row_step_px):
@@ -189,17 +246,21 @@ def _rotated_scanline_fill(
             if going_reverse:
                 span_stitches.reverse()
 
-            stitches_rotated.extend(span_stitches)
+            if span_stitches:
+                segments_rotated.append(span_stitches)
 
         reverse = not reverse
 
-    if not stitches_rotated:
+    if not segments_rotated:
         return []
 
-    pts = np.array(stitches_rotated)
-    pts_back = _rotate_points(pts, angle, center)
+    segments_back: List[List[Tuple[float, float]]] = []
+    for segment in segments_rotated:
+        pts = np.array(segment)
+        pts_back = _rotate_points(pts, angle, center)
+        segments_back.append([tuple(p) for p in pts_back])
 
-    return [tuple(p) for p in pts_back]
+    return segments_back
 
 
 def _find_spans(row: np.ndarray) -> List[Tuple[int, int]]:

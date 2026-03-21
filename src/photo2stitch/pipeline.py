@@ -16,7 +16,7 @@ import os
 from .preprocess import preprocess_photo, detect_background, auto_crop_to_subject
 from .quantize import quantize_colors, remove_small_regions
 from .segment import extract_regions, scale_regions_to_mm, Region
-from .fill import generate_fill_stitches, generate_outline_stitches
+from .fill import generate_fill_stitch_segments, generate_outline_stitches
 from .optimize import optimize_stitch_order, split_long_stitches
 from .compensate import apply_pull_compensation, apply_fill_compensation
 from .auto_angle import (
@@ -314,9 +314,9 @@ def convert_photo_to_embroidery(
         )
         if skip_fill:
             line_art_fill_skipped += 1
-            fill_pts = []
+            fill_segments = []
         else:
-            fill_pts = generate_fill_stitches(
+            fill_segments = generate_fill_stitch_segments(
                 contour=contour,
                 holes=holes,
                 fill_angle=region_angle,
@@ -326,22 +326,33 @@ def convert_photo_to_embroidery(
             )
 
             # Apply fill compensation
-            if comp_mm > 0 and fill_pts:
-                fill_pts = apply_fill_compensation(
-                    fill_pts, contour, comp_mm, region_angle
+            if comp_mm > 0 and fill_segments:
+                compensated_segments = []
+                for segment in fill_segments:
+                    compensated = apply_fill_compensation(
+                        segment, contour, comp_mm, region_angle
+                    )
+                    if compensated:
+                        compensated_segments.append(compensated)
+                fill_segments = compensated_segments
+
+        for fill_segment in fill_segments:
+            if not fill_segment:
+                continue
+
+            # Split long stitches
+            fill_segment = split_long_stitches(fill_segment, max_length=7.0)
+            if not fill_segment:
+                continue
+
+            # Jump to first stitch of each disconnected span
+            if pattern.stitches:
+                pattern.add_stitch(
+                    fill_segment[0][0], fill_segment[0][1], StitchType.JUMP
                 )
 
-        if fill_pts:
-            # Split long stitches
-            fill_pts = split_long_stitches(fill_pts, max_length=7.0)
-
-            # Jump to first stitch
-            if pattern.stitches:
-                pattern.add_stitch(fill_pts[0][0], fill_pts[0][1],
-                                   StitchType.JUMP)
-
             # Add fill stitches
-            for x, y in fill_pts:
+            for x, y in fill_segment:
                 pattern.add_stitch(x, y, StitchType.NORMAL)
 
         # Outline stitches
