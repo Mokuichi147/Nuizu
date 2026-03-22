@@ -497,6 +497,40 @@ def generate_preview(pattern: EmbroideryPattern,
 
     img = np.full((height, width, 3), bg_color, dtype=np.uint8)
 
+    # Hoop outline (decorative dashed ellipse, matching SVG dasharray 8,4)
+    margin = 20
+    hoop_cx = width // 2
+    hoop_cy = height // 2
+    hoop_rx = (width - margin) // 2
+    hoop_ry = (height - margin) // 2
+    hoop_color = (144, 176, 192)  # #c0b090 in BGR
+    import math
+    # Sample enough points for smooth curves
+    n_pts = 2000
+    angles = [2 * math.pi * i / n_pts for i in range(n_pts + 1)]
+    pts_x = [hoop_cx + hoop_rx * math.cos(a) for a in angles]
+    pts_y = [hoop_cy + hoop_ry * math.sin(a) for a in angles]
+    # Walk along the ellipse accumulating arc length
+    dash_on, gap_off = 8.0, 4.0
+    arc = 0.0
+    drawing = True
+    seg_start = 0
+    for i in range(1, len(angles)):
+        dx = pts_x[i] - pts_x[i - 1]
+        dy = pts_y[i] - pts_y[i - 1]
+        arc += math.sqrt(dx * dx + dy * dy)
+        threshold = dash_on if drawing else gap_off
+        if arc >= threshold:
+            if drawing:
+                for j in range(seg_start, i):
+                    cv2.line(img,
+                             (int(pts_x[j]), int(pts_y[j])),
+                             (int(pts_x[j + 1]), int(pts_y[j + 1])),
+                             hoop_color, 2, cv2.LINE_AA)
+            drawing = not drawing
+            seg_start = i
+            arc = 0.0
+
     current_color_idx = 0
     colors = pattern.colors
     prev_x, prev_y = None, None
@@ -529,6 +563,34 @@ def generate_preview(pattern: EmbroideryPattern,
                      cv2.LINE_AA)
 
         prev_x, prev_y = px, py
+
+    # Info text and color legend (matching SVG preview)
+    margin = 20
+    info_y = height - 8
+    w_mm = bounds[2] - bounds[0]
+    h_mm = bounds[3] - bounds[1]
+    info = (f"{w_mm:.0f}x{h_mm:.0f}mm | "
+            f"{pattern.stitch_count()} stitches | "
+            f"{len(colors)} colors")
+
+    cv2.putText(img, info, (margin, info_y),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (136, 136, 136), 1,
+                cv2.LINE_AA)
+
+    # Color swatches
+    swatch_size = 14
+    swatch_gap = 4
+    legend_x = width - margin - len(colors) * (swatch_size + swatch_gap)
+    legend_y = height - swatch_size - 6
+    for i, color in enumerate(colors):
+        cx = legend_x + i * (swatch_size + swatch_gap)
+        bgr = (int(color.b), int(color.g), int(color.r))
+        cv2.rectangle(img, (cx, legend_y),
+                      (cx + swatch_size, legend_y + swatch_size),
+                      bgr, cv2.FILLED)
+        cv2.rectangle(img, (cx, legend_y),
+                      (cx + swatch_size, legend_y + swatch_size),
+                      (102, 102, 102), 1)
 
     cv2.imwrite(output_path, img)
 
