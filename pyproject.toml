@@ -9,6 +9,7 @@ dependencies = [
     "opencv-python",
     "pillow",
     "scikit-learn",
+    "typer",
 ]
 
 [project.scripts]

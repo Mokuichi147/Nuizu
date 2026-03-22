@@ -1,223 +1,258 @@
 #!/usr/bin/env python3
-"""photo2stitch - Convert photos to embroidery files.
+"""photo2stitch のCLIエントリーポイント。"""
 
-Usage:
-    python -m photo2stitch input.jpg output.dst
-    python -m photo2stitch input.png output.jef --colors 12 --width 150
-    python -m photo2stitch photo.jpg design.pes --auto-angle --pull-comp 0.3
-    python -m photo2stitch photo.jpg design.dst --palette brother --preview svg
-"""
+from __future__ import annotations
 
-import argparse
-import sys
 import os
+import traceback
+from pathlib import Path
+from typing import Literal
+
+import typer
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        prog='photo2stitch',
-        description='Convert photos to embroidery machine files',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Supported output formats:
-  .dst    Tajima (most universal)
-  .pes    Brother / Babylock
-  .jef    JANOME
+PaletteName = Literal["janome", "brother", "madeira", "generic"]
+PreviewFormat = Literal["png", "svg", "both"]
 
-Thread palettes:
-  janome    JANOME polyester threads (default)
-  brother   Brother embroidery threads
-  madeira   Madeira Rayon 40
-  generic   Combined generic palette
+app = typer.Typer(
+    no_args_is_help=True,
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    help=(
+        "写真を刺繍用データ（DST / PES / JEF）へ変換します。\n\n"
+        "対応出力形式:\n"
+        "  .dst   Tajima（高い互換性）\n"
+        "  .pes   Brother / Babylock\n"
+        "  .jef   JANOME\n\n"
+        "使用例:\n"
+        "  photo2stitch photo.jpg design.dst\n"
+        "  photo2stitch photo.png design.jef --colors 12 --width 150\n"
+        "  photo2stitch photo.jpg design.pes --auto-angle --pull-comp 0.3\n"
+        "  photo2stitch photo.jpg design.dst --palette brother --preview svg"
+    ),
+)
 
-Examples:
-  %(prog)s photo.jpg design.dst
-  %(prog)s photo.png design.jef --colors 12 --width 150
-  %(prog)s photo.jpg design.pes -d 0.3 -a 30 --preview png
-  %(prog)s photo.jpg design.dst --auto-angle --pull-comp 0.3
-  %(prog)s photo.jpg design.jef --palette brother --skip-bg --auto-crop
-  %(prog)s photo.jpg design.dst --preview svg --preview svg
-        """,
-    )
 
-    parser.add_argument('input', help='Input image file (JPG, PNG, etc.)')
-    parser.add_argument('output', help='Output embroidery file (.dst, .pes, .jef)')
+@app.command()
+def convert(
+    input_path: str = typer.Argument(
+        ...,
+        metavar="入力画像",
+        help="入力画像ファイル（JPG, PNG など）",
+    ),
+    output_path: str = typer.Argument(
+        ...,
+        metavar="出力ファイル",
+        help="出力刺繍ファイル（.dst, .pes, .jef）",
+    ),
+    width: float = typer.Option(
+        100.0,
+        "--width",
+        "-W",
+        help="刺繍の目標幅（mm）",
+    ),
+    height: float | None = typer.Option(
+        None,
+        "--height",
+        "-H",
+        help="刺繍の目標高さ（mm）。未指定時は自動計算",
+    ),
+    colors: int = typer.Option(
+        8,
+        "--colors",
+        "-c",
+        help="使用する糸色数",
+    ),
+    free_colors: bool = typer.Option(
+        False,
+        "--free-colors",
+        help="実糸パレットへのスナップを無効化",
+    ),
+    palette: PaletteName = typer.Option(
+        "janome",
+        "--palette",
+        help="糸パレット（janome / brother / madeira / generic）",
+    ),
+    thread_width: float = typer.Option(
+        0.4,
+        "--thread-width",
+        "-t",
+        help="糸幅（mm）",
+    ),
+    density: float | None = typer.Option(
+        None,
+        "--density",
+        "-d",
+        help="フィル行間隔（mm）。未指定時は --thread-width と同値",
+    ),
+    stitch_length: float = typer.Option(
+        3.0,
+        "--stitch-length",
+        "-l",
+        help="最大ステッチ長（mm）",
+    ),
+    angle: float = typer.Option(
+        45.0,
+        "--angle",
+        "-a",
+        help="フィル角度（度）",
+    ),
+    auto_angle: bool = typer.Option(
+        False,
+        "--auto-angle",
+        help="領域ごとにフィル角度を自動最適化",
+    ),
+    no_underlay: bool = typer.Option(
+        False,
+        "--no-underlay",
+        help="アンダーレイ（下縫い）を無効化",
+    ),
+    no_outline: bool = typer.Option(
+        False,
+        "--no-outline",
+        help="アウトライン縫いを無効化",
+    ),
+    satin_outline: bool = typer.Option(
+        False,
+        "--satin-outline",
+        help="アウトラインをサテンステッチ化",
+    ),
+    pull_comp: float = typer.Option(
+        0.0,
+        "--pull-comp",
+        help="プルコンペンセーション（mm）。推奨: 0.2-0.5",
+    ),
+    blur: int = typer.Option(
+        3,
+        "--blur",
+        help="前処理ぼかし半径（0で無効）",
+    ),
+    min_region: float = typer.Option(
+        0.001,
+        "--min-region",
+        help="最小領域比率",
+    ),
+    enhance: bool = typer.Option(
+        True,
+        "--enhance/--no-enhance",
+        help="写真強調前処理の有効/無効",
+    ),
+    auto_crop: bool = typer.Option(
+        False,
+        "--auto-crop",
+        help="主被写体を自動検出してクロップ",
+    ),
+    skip_bg: bool = typer.Option(
+        False,
+        "--skip-bg",
+        help="背景色のステッチをスキップ",
+    ),
+    preview: PreviewFormat | None = typer.Option(
+        None,
+        "--preview",
+        help="プレビュー生成形式（png / svg / both）",
+    ),
+    preview_path: str | None = typer.Option(
+        None,
+        "--preview-path",
+        help="プレビュー出力先のベースパス",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="進行メッセージを抑制",
+    ),
+) -> None:
+    """写真から刺繍データを生成します。"""
+    in_file = Path(input_path)
+    if not in_file.exists() or not in_file.is_file():
+        typer.echo(f"エラー: 入力ファイルが見つかりません: {input_path}", err=True)
+        raise typer.Exit(code=1)
 
-    # Size
-    size_group = parser.add_argument_group('Size options')
-    size_group.add_argument(
-        '-W', '--width', type=float, default=100.0,
-        help='Target width in mm (default: 100)')
-    size_group.add_argument(
-        '-H', '--height', type=float, default=None,
-        help='Target height in mm (auto if not set)')
+    ext = Path(output_path).suffix.lower()
+    if ext not in (".dst", ".pes", ".jef"):
+        typer.echo(
+            f"エラー: 未対応の出力形式です: {ext or '(拡張子なし)'}",
+            err=True,
+        )
+        typer.echo("対応形式: .dst, .pes, .jef", err=True)
+        raise typer.Exit(code=1)
 
-    # Colors
-    color_group = parser.add_argument_group('Color options')
-    color_group.add_argument(
-        '-c', '--colors', type=int, default=8,
-        help='Number of thread colors (default: 8)')
-    color_group.add_argument(
-        '--free-colors', action='store_true',
-        help='Don\'t snap to thread palette')
-    color_group.add_argument(
-        '--palette', type=str, default='janome',
-        choices=['janome', 'brother', 'madeira', 'generic'],
-        help='Thread brand palette (default: janome)')
-
-    # Stitch
-    stitch_group = parser.add_argument_group('Stitch options')
-    stitch_group.add_argument(
-        '-t', '--thread-width', type=float, default=0.4,
-        help='Thread width in mm (default: 0.4)')
-    stitch_group.add_argument(
-        '-d', '--density', type=float, default=None,
-        help='Fill row spacing in mm (default: same as thread-width)')
-    stitch_group.add_argument(
-        '-l', '--stitch-length', type=float, default=3.0,
-        help='Maximum stitch length in mm (default: 3.0)')
-    stitch_group.add_argument(
-        '-a', '--angle', type=float, default=45.0,
-        help='Fill angle in degrees (default: 45)')
-    stitch_group.add_argument(
-        '--auto-angle', action='store_true',
-        help='Auto-optimize fill angle per region')
-    stitch_group.add_argument(
-        '--no-underlay', action='store_true',
-        help='Disable underlay stitches')
-    stitch_group.add_argument(
-        '--no-outline', action='store_true',
-        help='Disable outline stitches')
-    stitch_group.add_argument(
-        '--satin-outline', action='store_true',
-        help='Use satin stitch for outlines')
-    stitch_group.add_argument(
-        '--pull-comp', type=float, default=0.0,
-        metavar='MM',
-        help='Pull compensation in mm (0=off, typical: 0.2-0.5)')
-
-    # Processing
-    proc_group = parser.add_argument_group('Processing options')
-    proc_group.add_argument(
-        '--blur', type=int, default=3,
-        help='Pre-processing blur radius (0=off, default: 3)')
-    proc_group.add_argument(
-        '--min-region', type=float, default=0.003,
-        help='Minimum region area as fraction (default: 0.003)')
-    proc_group.add_argument(
-        '--no-enhance', action='store_true',
-        help='Disable photo enhancement preprocessing')
-    proc_group.add_argument(
-        '--auto-crop', action='store_true',
-        help='Auto-crop to main subject')
-    proc_group.add_argument(
-        '--skip-bg', action='store_true',
-        help='Skip stitching detected background color')
-
-    # Output
-    out_group = parser.add_argument_group('Output options')
-    out_group.add_argument(
-        '--preview', type=str, default=None,
-        choices=['png', 'svg', 'both'],
-        help='Generate preview (png, svg, or both)')
-    out_group.add_argument(
-        '--preview-path', type=str, default=None,
-        help='Custom preview image path')
-    out_group.add_argument(
-        '-q', '--quiet', action='store_true',
-        help='Suppress progress messages')
-
-    args = parser.parse_args()
-
-    # Validate
-    if not os.path.exists(args.input):
-        print(f"Error: Input file not found: {args.input}", file=sys.stderr)
-        sys.exit(1)
-
-    ext = '.' + args.output.rsplit('.', 1)[-1].lower() if '.' in args.output \
-        else ''
-    if ext not in ('.dst', '.pes', '.jef'):
-        print(f"Error: Unsupported format: {ext}", file=sys.stderr)
-        print("Supported: .dst, .pes, .jef", file=sys.stderr)
-        sys.exit(1)
-
-    # Fill density defaults to thread width
-    fill_density = args.density if args.density is not None else args.thread_width
+    fill_density = density if density is not None else thread_width
 
     from .pipeline import convert_photo_to_embroidery, generate_preview
     from .svg_preview import generate_svg_preview
 
     try:
         pattern = convert_photo_to_embroidery(
-            image_path=args.input,
-            output_path=args.output,
-            target_width_mm=args.width,
-            target_height_mm=args.height,
-            n_colors=args.colors,
-            use_thread_palette=not args.free_colors,
-            thread_brand=args.palette,
+            image_path=input_path,
+            output_path=output_path,
+            target_width_mm=width,
+            target_height_mm=height,
+            n_colors=colors,
+            use_thread_palette=not free_colors,
+            thread_brand=palette,
             fill_density=fill_density,
-            stitch_length=args.stitch_length,
-            fill_angle=args.angle,
-            auto_angle=args.auto_angle,
-            underlay=not args.no_underlay,
-            outline=not args.no_outline,
-            outline_satin=args.satin_outline,
-            pull_compensation=args.pull_comp,
-            thread_width=args.thread_width,
-            blur_radius=args.blur,
-            min_region_ratio=args.min_region,
-            enhance_photo=not args.no_enhance,
-            auto_crop=args.auto_crop,
-            skip_background=args.skip_bg,
-            verbose=not args.quiet,
+            stitch_length=stitch_length,
+            fill_angle=angle,
+            auto_angle=auto_angle,
+            underlay=not no_underlay,
+            outline=not no_outline,
+            outline_satin=satin_outline,
+            pull_compensation=pull_comp,
+            thread_width=thread_width,
+            blur_radius=blur,
+            min_region_ratio=min_region,
+            enhance_photo=enhance,
+            auto_crop=auto_crop,
+            skip_background=skip_bg,
+            verbose=not quiet,
         )
 
-        # Generate previews
-        if args.preview:
-            base = args.preview_path or os.path.splitext(args.output)[0]
+        if preview:
+            base = preview_path or os.path.splitext(output_path)[0]
 
-            if args.preview in ('png', 'both'):
-                # Realistic thread-width preview
-                thread_path = base + '_preview.png' if not args.preview_path \
-                    else base
-                generate_preview(pattern, thread_path,
-                                thread_width_mm=args.thread_width)
-                if not args.quiet:
-                    print(f"Preview (thread): {thread_path}",
-                          file=sys.stderr)
+            if preview in ("png", "both"):
+                thread_path = base if preview_path else f"{base}_preview.png"
+                generate_preview(pattern, thread_path, thread_width_mm=thread_width)
+                if not quiet:
+                    typer.echo(f"プレビュー（糸幅）: {thread_path}", err=True)
 
-                # Thin-line stitch position preview
-                stitch_path = base + '_stitches.png'
+                stitch_path = f"{base}_stitches.png"
                 generate_preview(pattern, stitch_path, thread_width_mm=0)
-                if not args.quiet:
-                    print(f"Preview (stitch): {stitch_path}",
-                          file=sys.stderr)
+                if not quiet:
+                    typer.echo(f"プレビュー（針落ち）: {stitch_path}", err=True)
 
-            if args.preview in ('svg', 'both'):
-                # Realistic thread-width SVG
-                svg_thread_path = base + '_preview.svg' if not args.preview_path \
-                    else base.replace('.png', '.svg')
-                generate_svg_preview(pattern, svg_thread_path,
-                                    thread_width_mm=args.thread_width)
-                if not args.quiet:
-                    print(f"Preview (SVG thread): {svg_thread_path}",
-                          file=sys.stderr)
+            if preview in ("svg", "both"):
+                if preview_path:
+                    custom = Path(base)
+                    svg_thread_path = str(
+                        custom.with_suffix(".svg")
+                        if custom.suffix
+                        else Path(f"{base}.svg")
+                    )
+                else:
+                    svg_thread_path = f"{base}_preview.svg"
+                generate_svg_preview(pattern, svg_thread_path, thread_width_mm=thread_width)
+                if not quiet:
+                    typer.echo(f"プレビュー（SVG 糸幅）: {svg_thread_path}", err=True)
 
-                # Thin-line stitch position SVG
-                svg_stitch_path = base + '_stitches.svg'
-                generate_svg_preview(pattern, svg_stitch_path,
-                                    thread_width_mm=0)
-                if not args.quiet:
-                    print(f"Preview (SVG stitch): {svg_stitch_path}",
-                          file=sys.stderr)
+                svg_stitch_path = f"{base}_stitches.svg"
+                generate_svg_preview(pattern, svg_stitch_path, thread_width_mm=0)
+                if not quiet:
+                    typer.echo(f"プレビュー（SVG 針落ち）: {svg_stitch_path}", err=True)
 
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        import traceback
+    except Exception as exc:
+        typer.echo(f"エラー: {exc}", err=True)
         traceback.print_exc()
-        sys.exit(1)
+        raise typer.Exit(code=1) from exc
 
 
-if __name__ == '__main__':
+def main() -> None:
+    """pyproject の scripts から呼ばれるエントリーポイント。"""
+    app(prog_name="photo2stitch")
+
+
+if __name__ == "__main__":
     main()
