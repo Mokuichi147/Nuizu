@@ -93,6 +93,7 @@ def quantize_colors(image: np.ndarray, n_colors: int,
                     use_thread_palette: bool = True,
                     custom_palette: List = None,
                     merge_close: bool = True,
+                    fg_mask: 'np.ndarray | None' = None,
                     ) -> Tuple[np.ndarray, List[Tuple[int, int, int]]]:
     """Quantize image colors for embroidery.
 
@@ -102,6 +103,10 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         use_thread_palette: If True, snap to nearest thread colors.
         custom_palette: Optional list of (R, G, B, Name) tuples.
         merge_close: If True, merge near-identical clusters.
+        fg_mask: Optional (H, W) boolean mask. True = foreground pixel.
+                 When provided, only foreground pixels are used for
+                 K-means fitting so transparent pixels don't create
+                 spurious clusters.
 
     Returns:
         Tuple of (label_map, palette):
@@ -122,10 +127,20 @@ def quantize_colors(image: np.ndarray, n_colors: int,
     kmeans = MiniBatchKMeans(
         n_clusters=n_colors,
         random_state=42,
-        batch_size=min(10000, len(pixels_lab)),
         n_init=10,
     )
-    labels = kmeans.fit_predict(pixels_lab)
+
+    if fg_mask is not None:
+        # Fit only on opaque (foreground) pixels to avoid transparent
+        # pixels (often black) creating a spurious cluster.
+        fg_flat = fg_mask.reshape(-1)
+        fg_pixels_lab = pixels_lab[fg_flat]
+        kmeans.batch_size = min(10000, max(1, len(fg_pixels_lab)))
+        kmeans.fit(fg_pixels_lab)
+        labels = kmeans.predict(pixels_lab)
+    else:
+        kmeans.batch_size = min(10000, len(pixels_lab))
+        labels = kmeans.fit_predict(pixels_lab)
 
     # Get cluster centers in RGB
     center_rgbs = []

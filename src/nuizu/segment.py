@@ -67,6 +67,9 @@ def _smooth_label_map(label_map: np.ndarray,
     smoothing because they represent intentional structural lines
     rather than noise.
     """
+    # Preserve transparent pixels (label == -1) through smoothing.
+    bg_mask = label_map < 0
+
     n_colors = label_map.max() + 1
     h, w = label_map.shape
     best_score = np.full((h, w), -1.0, dtype=np.float32)
@@ -100,6 +103,9 @@ def _smooth_label_map(label_map: np.ndarray,
         # Pixels that were dark before but lost to smoothing
         restore = was_dark & ~is_dark
         smoothed[restore] = label_map[restore]
+
+    # Restore transparent pixel labels
+    smoothed[bg_mask] = -1
 
     return smoothed
 

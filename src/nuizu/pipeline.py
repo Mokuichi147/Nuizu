@@ -104,9 +104,18 @@ def convert_photo_to_embroidery(
 
     # 1. Load and preprocess image
     log(f"[1/7] Loading image: {image_path}")
-    img = cv2.imread(image_path)
+    img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(f"Cannot load image: {image_path}")
+
+    # Extract alpha mask before converting to 3-channel RGB.
+    # Transparent pixels are the background in alpha-channel images.
+    alpha_mask: Optional[np.ndarray] = None
+    if img.ndim == 3 and img.shape[2] == 4:
+        alpha_mask = img[:, :, 3] > 127  # True = opaque (foreground)
+        img = img[:, :, :3]
+    elif img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     h, w = img_rgb.shape[:2]
@@ -115,12 +124,19 @@ def convert_photo_to_embroidery(
     # Auto-crop
     if auto_crop:
         img_rgb, crop_box = auto_crop_to_subject(img_rgb)
+        if alpha_mask is not None:
+            x, y, cw, ch = crop_box
+            alpha_mask = alpha_mask[y:y+ch, x:x+cw]
         h, w = img_rgb.shape[:2]
         log(f"  Auto-cropped to: {w}x{h}px")
 
     # Detect background
     bg_color = None
-    if skip_background:
+    if alpha_mask is not None:
+        # Alpha channel defines the background — skip color-based detection.
+        skip_background = True
+        log("  Transparent background detected via alpha channel")
+    elif skip_background:
         bg_color = detect_background(img_rgb, method='corner')
         if bg_color is None:
             bg_color = detect_background(img_rgb, method='edge')
@@ -161,9 +177,14 @@ def convert_photo_to_embroidery(
     max_dim = 800
     if max(h, w) > max_dim:
         scale = max_dim / max(h, w)
-        img_rgb = cv2.resize(img_rgb,
-                             (int(w * scale), int(h * scale)),
+        new_size = (int(w * scale), int(h * scale))
+        img_rgb = cv2.resize(img_rgb, new_size,
                              interpolation=cv2.INTER_AREA)
+        if alpha_mask is not None:
+            alpha_mask = cv2.resize(
+                alpha_mask.astype(np.uint8), new_size,
+                interpolation=cv2.INTER_NEAREST,
+            ).astype(bool)
     if blur_radius > 0:
         k = blur_radius * 2 + 1
         img_rgb = cv2.GaussianBlur(img_rgb, (k, k), 0)
@@ -193,8 +214,14 @@ def convert_photo_to_embroidery(
         img_rgb, n_colors, use_thread_palette,
         custom_palette=custom_pal,
         merge_close=not strict_colors,
+        fg_mask=alpha_mask,
     )
     log(f"  Palette: {len(palette)} colors")
+
+    # Mark transparent pixels as -1 so they are excluded from
+    # region segmentation entirely.
+    if alpha_mask is not None:
+        label_map[~alpha_mask] = -1
 
     if strict_colors and len(palette) != requested_n_colors:
         raise RuntimeError(
@@ -213,7 +240,7 @@ def convert_photo_to_embroidery(
         simplify_epsilon_min=0.5,
     )
 
-    # Filter out background regions.
+    # Filter out background regions by color.
     # Only skip the single palette color closest to the detected
     # background — never distance-threshold, which would also
     # discard light foreground colors (e.g., light hair, pale skin).
