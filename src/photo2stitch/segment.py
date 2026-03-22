@@ -54,6 +54,56 @@ def _chaikin_smooth(points: np.ndarray, iterations: int = 2) -> np.ndarray:
     return pts
 
 
+def _smooth_label_map(label_map: np.ndarray,
+                      palette: List[Tuple[int, int, int]],
+                      kernel_size: int = 7) -> np.ndarray:
+    """Smooth label map via per-color majority voting.
+
+    Replaces each pixel with the most prevalent label in its
+    neighborhood, removing small noisy patches that would otherwise
+    create holes during contour extraction.
+
+    Dark-colored pixels (outlines, strokes) are restored after
+    smoothing because they represent intentional structural lines
+    rather than noise.
+    """
+    n_colors = label_map.max() + 1
+    h, w = label_map.shape
+    best_score = np.full((h, w), -1.0, dtype=np.float32)
+    smoothed = np.zeros_like(label_map)
+
+    for c in range(n_colors):
+        score = cv2.blur(
+            (label_map == c).astype(np.float32), (kernel_size, kernel_size)
+        )
+        better = score > best_score
+        smoothed[better] = c
+        best_score[better] = score[better]
+
+    # Restore dark pixels that were erased by smoothing.
+    # Thin dark strokes (outlines, hair strands, eyes) are critical
+    # structural elements destroyed by majority voting.
+    dark_labels = set()
+    for c in range(n_colors):
+        if c < len(palette):
+            luma = sum(palette[c]) / 3.0
+            if luma < 80:
+                dark_labels.add(c)
+
+    if dark_labels:
+        was_dark = np.zeros((h, w), dtype=bool)
+        for c in dark_labels:
+            was_dark |= (label_map == c)
+        is_dark = np.zeros((h, w), dtype=bool)
+        for c in dark_labels:
+            is_dark |= (smoothed == c)
+        # Pixels that were dark before but lost to smoothing
+        restore = was_dark & ~is_dark
+        smoothed[restore] = label_map[restore]
+
+    return smoothed
+
+
 def extract_regions(label_map: np.ndarray,
                     palette: List[Tuple[int, int, int]],
                     min_area: int = 50,
@@ -72,6 +122,11 @@ def extract_regions(label_map: np.ndarray,
     Returns:
         List of Region objects sorted by area (largest first).
     """
+    # Smooth label map to eliminate small noisy patches that would
+    # create holes inside regions during contour extraction.
+    if morph_cleanup:
+        label_map = _smooth_label_map(label_map, palette, kernel_size=3)
+
     regions = []
     n_colors = label_map.max() + 1
 
@@ -82,12 +137,13 @@ def extract_regions(label_map: np.ndarray,
             continue
 
         if morph_cleanup:
-            # Morphological cleanup: close small gaps, smooth edges
+            # Close small remaining gaps.
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-        # Find contours with hierarchy
+        # Use RETR_CCOMP: two-level hierarchy with holes.
+        # Outer contours define the region boundary; their child
+        # contours are holes where other colors exist.
         contours, hierarchy = cv2.findContours(
             mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
         )
@@ -95,17 +151,25 @@ def extract_regions(label_map: np.ndarray,
         if not contours or hierarchy is None:
             continue
 
-        hierarchy = hierarchy[0]
+        hier = hierarchy[0]  # shape (n, 4): [next, prev, child, parent]
 
-        # Process top-level contours (outer boundaries)
-        for i, (contour, hier) in enumerate(zip(contours, hierarchy)):
-            # hier = [next, prev, first_child, parent]
-            if hier[3] != -1:
-                # This is a hole (has parent), skip - handled by parent
+        # Iterate over top-level contours (parent == -1)
+        idx = 0
+        while idx >= 0:
+            if hier[idx][3] != -1:
+                # Not a top-level contour, skip
+                idx = hier[idx][0]
                 continue
 
+            contour = contours[idx]
             area = cv2.contourArea(contour)
-            if area < min_area:
+            perimeter = cv2.arcLength(contour, True)
+            # Keep regions by area OR perimeter.  Thin strokes
+            # (outlines, hair strands) have near-zero area but
+            # significant perimeter and must not be discarded.
+            min_perimeter = min_area ** 0.5 * 1.5
+            if area < min_area and perimeter < min_perimeter:
+                idx = hier[idx][0]
                 continue
 
             # Simplify contour
@@ -115,28 +179,27 @@ def extract_regions(label_map: np.ndarray,
             outer = approx.reshape(-1, 2).astype(np.float64)
 
             if len(outer) < 3:
+                idx = hier[idx][0]
                 continue
 
             # Keep raw (non-simplified) contour for fill mask
             outer_raw = contour.reshape(-1, 2).astype(np.float64)
 
-            # Collect holes (children of this contour)
+            # Collect holes (child contours)
             holes = []
             holes_raw = []
-            child_idx = hier[2]
-            while child_idx != -1:
+            child_idx = hier[idx][2]  # first child
+            while child_idx >= 0:
                 hole_contour = contours[child_idx]
-                hole_area = cv2.contourArea(hole_contour)
-                if hole_area >= min_area * 0.5:
-                    hole_raw = hole_contour.reshape(-1, 2).astype(np.float64)
-                    eps_h = max(simplify_epsilon_min,
-                                0.0003 * cv2.arcLength(hole_contour, True))
-                    hole_approx = cv2.approxPolyDP(hole_contour, eps_h, True)
-                    hole_pts = hole_approx.reshape(-1, 2).astype(np.float64)
-                    if len(hole_pts) >= 3:
-                        holes.append(hole_pts)
-                        holes_raw.append(hole_raw)
-                child_idx = hierarchy[child_idx][0]
+                hole_raw = hole_contour.reshape(-1, 2).astype(np.float64)
+                h_eps = max(simplify_epsilon_min,
+                            0.0003 * cv2.arcLength(hole_contour, True))
+                h_approx = cv2.approxPolyDP(hole_contour, h_eps, True)
+                hole_simplified = h_approx.reshape(-1, 2).astype(np.float64)
+                if len(hole_simplified) >= 3:
+                    holes.append(hole_simplified)
+                    holes_raw.append(hole_raw)
+                child_idx = hier[child_idx][0]  # next sibling
 
             # Compute centroid
             M = cv2.moments(contour)
@@ -159,6 +222,8 @@ def extract_regions(label_map: np.ndarray,
                 contour_raw=outer_raw,
                 holes_raw=holes_raw,
             ))
+
+            idx = hier[idx][0]  # next sibling
 
     # Sort by area descending (stitch large regions first for underlay)
     regions.sort(key=lambda r: r.area, reverse=True)

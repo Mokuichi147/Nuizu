@@ -132,11 +132,6 @@ def convert(
         "--min-region",
         help="最小領域比率",
     ),
-    enhance: bool = typer.Option(
-        True,
-        "--enhance/--no-enhance",
-        help="写真強調前処理の有効/無効",
-    ),
     auto_crop: bool = typer.Option(
         False,
         "--auto-crop",
@@ -209,7 +204,6 @@ def convert(
             thread_width=thread_width,
             blur_radius=blur,
             min_region_ratio=min_region,
-            enhance_photo=enhance,
             auto_crop=auto_crop,
             skip_background=skip_bg,
             strict_colors=strict_colors,
