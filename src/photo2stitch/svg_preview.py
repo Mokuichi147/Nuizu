@@ -16,6 +16,7 @@ def generate_svg_preview(
     canvas_width: int = 800,
     bg_color: str = "#f0ebe0",
     show_jumps: bool = False,
+    thread_width_mm: float = 0.4,
     stitch_opacity: float = 0.85,
     fabric_texture: bool = True,
 ):
@@ -116,7 +117,7 @@ def generate_svg_preview(
         if current_group_lines:
             lines.append(
                 f'<g stroke="{current_color_hex}" '
-                f'stroke-width="{max(0.5, 0.4 * scale / 10):.2f}" '
+                f'stroke-width="{max(0.5, thread_width_mm * scale):.2f}" '
                 f'stroke-linecap="round" '
                 f'opacity="{stitch_opacity}" '
                 f'filter="url(#threadShadow)">'

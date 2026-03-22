@@ -56,12 +56,6 @@ def compute_optimal_fill_angle(contour_mm: np.ndarray,
         # Normalize to [0, 180) range
         angle_deg = angle_deg % 180.0
 
-        if variation:
-            # Add small variation based on region position
-            # to prevent visual alignment artifacts
-            hash_val = (mean[0] * 17.3 + mean[1] * 31.7) % 30.0
-            angle_deg += hash_val - 15.0
-
         return angle_deg
 
     except Exception:

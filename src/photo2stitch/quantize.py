@@ -121,7 +121,7 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         n_clusters=n_colors,
         random_state=42,
         batch_size=min(10000, len(pixels_lab)),
-        n_init=3,
+        n_init=10,
     )
     labels = kmeans.fit_predict(pixels_lab)
 
@@ -160,7 +160,185 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         final_palette = center_rgbs
 
     label_map = labels.reshape(h, w)
+
+    # Merge perceptually close clusters to prevent fragmentation.
+    # K-means may split anti-aliased edges or gradients into separate
+    # clusters that are too close in LAB space to be distinguishable
+    # as separate thread colors.
+    label_map, final_palette = merge_close_clusters(
+        label_map, final_palette, min_delta_e=15.0,
+    )
+
     return label_map, final_palette
+
+
+def merge_close_clusters(
+    label_map: np.ndarray,
+    palette: List[Tuple[int, int, int]],
+    min_delta_e: float = 15.0,
+) -> Tuple[np.ndarray, List[Tuple[int, int, int]]]:
+    """Merge clusters whose LAB distance is below threshold.
+
+    Iteratively finds the closest pair of colors and merges them
+    (reassigning the smaller cluster to the larger one) until all
+    remaining pairs exceed min_delta_e.
+
+    Args:
+        label_map: (H, W) integer label array.
+        palette: List of (R, G, B) tuples, one per label.
+        min_delta_e: Minimum Delta-E (LAB Euclidean) between any
+            two colors to keep them as separate thread colors.
+
+    Returns:
+        (merged_label_map, merged_palette) with renumbered labels.
+    """
+    if len(palette) <= 1:
+        return label_map, palette
+
+    # Compute LAB for all palette colors
+    palette_rgb = np.array(palette, dtype=np.float64)
+    palette_lab = rgb_to_lab(palette_rgb)
+
+    # Count pixels per label for merge direction (small → large)
+    n = len(palette)
+    counts = np.array([(label_map == i).sum() for i in range(n)])
+
+    # Build merge mapping: label_id → canonical label_id
+    canonical = list(range(n))
+
+    def find(x):
+        while canonical[x] != x:
+            canonical[x] = canonical[canonical[x]]
+            x = canonical[x]
+        return x
+
+    # Iteratively merge closest pair
+    active = set(range(n))
+    while len(active) > 1:
+        # Find closest pair among active labels
+        best_dist = float('inf')
+        best_pair = None
+        active_list = sorted(active)
+        for ii in range(len(active_list)):
+            for jj in range(ii + 1, len(active_list)):
+                a, b = active_list[ii], active_list[jj]
+                d = np.sqrt(np.sum((palette_lab[a] - palette_lab[b]) ** 2))
+                if d < best_dist:
+                    best_dist = d
+                    best_pair = (a, b)
+
+        if best_dist >= min_delta_e:
+            break
+
+        # Merge smaller into larger
+        a, b = best_pair
+        if counts[a] >= counts[b]:
+            keep, drop = a, b
+        else:
+            keep, drop = b, a
+
+        canonical[drop] = keep
+        counts[keep] += counts[drop]
+        counts[drop] = 0
+
+        # Update LAB center to weighted average
+        total = counts[keep]
+        w_keep = (total - counts[drop]) if counts[drop] > 0 else total
+        # Recalculate from original counts before merge
+        # Simpler: just keep the larger cluster's color since it dominates
+        active.discard(drop)
+
+    # Build final mapping
+    old_to_new = {}
+    new_palette = []
+    for idx in sorted(active):
+        old_to_new[idx] = len(new_palette)
+        new_palette.append(palette[idx])
+
+    # Remap labels
+    remap = np.zeros(n, dtype=np.int32)
+    for i in range(n):
+        root = find(i)
+        remap[i] = old_to_new[root]
+
+    merged_map = remap[label_map]
+    return merged_map, new_palette
+
+
+def dissolve_boundary_artifacts(label_map: np.ndarray) -> np.ndarray:
+    """Dissolve pixels that are sandwiched between two different colors.
+
+    Anti-aliasing and compression create intermediate-color pixels at
+    the boundary between two regions. These pixels are adjacent to at
+    least two *different* other labels — they are "sandwiched."
+
+    Thin features on a uniform background (e.g., a black stroke on
+    white) touch only ONE other label and are preserved.
+
+    This distinction is purely geometric and works for all image types.
+
+    Args:
+        label_map: (H, W) integer label array.
+
+    Returns:
+        Label map with sandwiched boundary pixels reassigned.
+    """
+    import cv2
+
+    n = label_map.max() + 1
+    h, w = label_map.shape
+    kernel = np.ones((3, 3), np.uint8)
+
+    # Count how many distinct OTHER labels each pixel is adjacent to
+    n_other_labels = np.zeros((h, w), dtype=np.int32)
+    for c in range(n):
+        mask_c = (label_map == c).astype(np.uint8)
+        dilated = cv2.dilate(mask_c, kernel)
+        # Pixels adjacent to label c but not belonging to label c
+        adjacent = (dilated > 0) & (mask_c == 0)
+        n_other_labels += adjacent.astype(np.int32)
+
+    # Sandwiched: touching >= 2 different other labels
+    sandwiched = n_other_labels >= 2
+
+    # Reassign sandwiched pixels via local majority voting
+    smoothed = smooth_label_map(label_map, kernel_size=5)
+    result = label_map.copy()
+    result[sandwiched] = smoothed[sandwiched]
+
+    return result
+
+
+def smooth_label_map(label_map: np.ndarray,
+                     kernel_size: int = 5) -> np.ndarray:
+    """Smooth label map boundaries using majority voting.
+
+    Reduces jagged edges between color regions by assigning each
+    pixel to the most prevalent color in its neighborhood.
+
+    Args:
+        label_map: (H, W) array of color labels.
+        kernel_size: Size of the voting window.
+
+    Returns:
+        Smoothed label map.
+    """
+    import cv2
+
+    n_colors = label_map.max() + 1
+    h, w = label_map.shape
+
+    smoothed = np.zeros_like(label_map)
+    best_score = np.full((h, w), -1.0, dtype=np.float32)
+
+    for c in range(n_colors):
+        mask = (label_map == c).astype(np.float32)
+        score = cv2.blur(mask, (kernel_size, kernel_size))
+        better = score > best_score
+        smoothed[better] = c
+        best_score[better] = score[better]
+
+    return smoothed
 
 
 def remove_small_regions(label_map: np.ndarray,

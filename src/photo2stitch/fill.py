@@ -10,7 +10,7 @@ import numpy as np
 from typing import List, Tuple
 
 # Internal raster resolution: pixels per mm for fill computation
-_RASTER_PPM = 10
+_RASTER_PPM = 20
 
 
 def _rasterize_region(contour_mm: np.ndarray,
@@ -39,9 +39,24 @@ def _rasterize_region(contour_mm: np.ndarray,
         px = pts.copy()
         px[:, 0] = (px[:, 0] - min_x) * ppm
         px[:, 1] = (px[:, 1] - min_y) * ppm
-        return px.astype(np.int32)
+        return np.round(px).astype(np.int32)
 
-    cv2.fillPoly(mask, [to_px(contour_mm)], 255)
+    contour_px = to_px(contour_mm)
+    cv2.fillPoly(mask, [contour_px], 255)
+    # Draw contour outline to include boundary pixels in fill
+    cv2.polylines(mask, [contour_px], True, 255, 1)
+    for hole in holes_mm:
+        cv2.fillPoly(mask, [to_px(hole)], 0)
+
+    # Dilation so fill extends well under outline stitches.
+    # ~0.3mm ensures fill covers the region edge even after
+    # outline stitch offset.
+    dilate_r = max(2, round(0.3 * ppm))
+    dilate_size = dilate_r * 2 + 1
+    dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                                          (dilate_size, dilate_size))
+    mask = cv2.dilate(mask, dilate_k, iterations=1)
+    # Re-cut holes after dilation
     for hole in holes_mm:
         cv2.fillPoly(mask, [to_px(hole)], 0)
 
@@ -196,52 +211,55 @@ def _rotated_scanline_fill_segments(
     h, w = mask.shape
     ppm = _RASTER_PPM
 
-    row_step_px = max(1, int(spacing * ppm))
-    stitch_step_px = max(1, int(stitch_length * ppm))
-    stagger_px = int(stagger * ppm) if stagger else 0
+    # Work in mm to keep row spacing exactly uniform.
+    # Convert row y-positions to pixel rows only for mask lookup.
+    height_mm = h / ppm
+    stagger_mm = stagger if stagger else 0.0
 
     segments_rotated: List[List[Tuple[float, float]]] = []
     reverse = False
+    row_idx = 0
 
-    for row in range(0, h, row_step_px):
-        if row >= h:
-            break
+    y_mm = 0.0
+    while y_mm <= height_mm:
+        row_px = min(round(y_mm * ppm), h - 1)
 
-        row_data = mask[row, :]
+        row_data = mask[row_px, :]
         spans = _find_spans(row_data)
 
         if not spans:
+            y_mm += spacing
+            row_idx += 1
             continue
 
         if reverse:
             spans = [(e, s) for s, e in reversed(spans)]
 
-        row_y_mm = oy + row / ppm
-        row_idx = row // row_step_px
-        row_offset = stagger_px * (row_idx % 2) if stagger_px else 0
+        row_y_mm = oy + y_mm
+        row_offset_mm = stagger_mm * (row_idx % 2)
 
         for span_start, span_end in spans:
             s = min(span_start, span_end)
             e = max(span_start, span_end)
             going_reverse = span_start > span_end
 
+            s_mm = ox + s / ppm
+            e_mm = ox + e / ppm
+
             span_stitches = []
-            x = s + (row_offset % stitch_step_px if stitch_step_px else 0)
-            if x > e:
-                x = s
+            x_mm = s_mm + (row_offset_mm % stitch_length if stitch_length else 0)
+            if x_mm > e_mm:
+                x_mm = s_mm
 
-            while x <= e:
-                x_mm = ox + x / ppm
+            while x_mm <= e_mm:
                 span_stitches.append((x_mm, row_y_mm))
-                x += stitch_step_px
+                x_mm += stitch_length
 
-            end_x_mm = ox + e / ppm
-            if span_stitches and abs(span_stitches[-1][0] - end_x_mm) > 0.05:
-                span_stitches.append((end_x_mm, row_y_mm))
+            if span_stitches and abs(span_stitches[-1][0] - e_mm) > 0.05:
+                span_stitches.append((e_mm, row_y_mm))
 
             if not span_stitches:
-                start_x_mm = ox + s / ppm
-                span_stitches.append((start_x_mm, row_y_mm))
+                span_stitches.append((s_mm, row_y_mm))
 
             if going_reverse:
                 span_stitches.reverse()
@@ -250,6 +268,8 @@ def _rotated_scanline_fill_segments(
                 segments_rotated.append(span_stitches)
 
         reverse = not reverse
+        y_mm += spacing
+        row_idx += 1
 
     if not segments_rotated:
         return []

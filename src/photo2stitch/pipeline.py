@@ -15,7 +15,7 @@ import os
 
 from .preprocess import preprocess_photo, detect_background, auto_crop_to_subject
 from .quantize import quantize_colors, remove_small_regions
-from .segment import extract_regions, scale_regions_to_mm, Region
+from .segment import extract_regions, scale_regions_to_mm, Region, _chaikin_smooth
 from .fill import generate_fill_stitch_segments, generate_outline_stitches
 from .optimize import optimize_stitch_order, split_long_stitches
 from .compensate import apply_pull_compensation, apply_fill_compensation
@@ -68,6 +68,8 @@ def convert_photo_to_embroidery(
     underlay: bool = True,
     outline: bool = True,
     outline_satin: bool = False,
+    # Thread
+    thread_width: float = 0.4,
     # Compensation
     pull_compensation: float = 0.0,
     # Processing
@@ -139,7 +141,7 @@ def convert_photo_to_embroidery(
         if blur_radius > 0:
             blur_radius = 0
             log("  Line-art mode: blur disabled")
-        if min_region_ratio >= 0.003:
+        if min_region_ratio >= 0.0005:
             min_region_ratio = 0.00001
             log("  Line-art mode: min-region set to 0.00001")
         if n_colors >= 8:
@@ -148,6 +150,12 @@ def convert_photo_to_embroidery(
         if underlay:
             underlay = False
             log("  Line-art mode: underlay disabled")
+        if fill_density > 0.4:
+            fill_density = 0.4
+            log("  Line-art mode: fill density set to 0.4mm")
+        if not auto_angle:
+            auto_angle = True
+            log("  Line-art mode: auto-angle enabled")
 
     # Detect background
     bg_color = None
@@ -197,6 +205,12 @@ def convert_photo_to_embroidery(
 
     h, w = img_rgb.shape[:2]
 
+    # Median filter to remove anti-aliasing and JPEG artifacts.
+    # Median preserves edges while replacing isolated intermediate-color
+    # pixels with the dominant neighbor color, preventing K-means from
+    # creating spurious clusters for transition pixels.
+    img_rgb = cv2.medianBlur(img_rgb, 3)
+
     # 3. Color quantization
     log(f"[3/7] Quantizing to {n_colors} colors (palette: {thread_brand})...")
     custom_pal = None
@@ -211,21 +225,20 @@ def convert_photo_to_embroidery(
         img_rgb, n_colors, use_thread_palette,
         custom_palette=custom_pal,
     )
-    if line_art_mode:
-        log("  Line-art mode: small-region merge disabled")
-    else:
-        label_map = remove_small_regions(label_map, min_region_ratio)
     log(f"  Palette: {len(palette)} colors")
 
     # 4. Region segmentation
     log("[4/7] Segmenting regions...")
+    # Compute min area from physical stitch size: regions below ~1mm²
+    # cannot be meaningfully stitched regardless of image resolution.
+    px_per_mm = max(h, w) / max(target_width_mm, target_height_mm)
     min_area = max(1, int(h * w * min_region_ratio))
     regions = extract_regions(
         label_map,
         palette,
         min_area=min_area,
         morph_cleanup=not line_art_mode,
-        simplify_epsilon_min=0.25 if line_art_mode else 1.0,
+        simplify_epsilon_min=0.25 if line_art_mode else 0.5,
     )
 
     # Filter out background regions
@@ -267,8 +280,22 @@ def convert_photo_to_embroidery(
     current_color = None
     total_regions = len(regions)
     comp_mm = pull_compensation
-    image_area_px = max(1, h * w)
     line_art_fill_skipped = 0
+
+    # Compute a single fill angle from the largest region overall.
+    # All regions use the same angle for uniform appearance.
+    global_angle = fill_angle
+    if auto_angle:
+        largest_region = None
+        for region in regions:
+            if region.contour_mm is None:
+                continue
+            if largest_region is None or region.area > largest_region.area:
+                largest_region = region
+        if largest_region is not None:
+            global_angle = compute_optimal_fill_angle(
+                largest_region.contour_mm, fill_angle
+            )
 
     for i, region in enumerate(regions):
         if region.contour_mm is None:
@@ -284,43 +311,50 @@ def convert_photo_to_embroidery(
                 pattern.add_color_change()
             current_color = region.color_rgb
 
-        # Determine fill angle
-        if auto_angle:
-            thin_angle = compute_angle_for_thin_region(region.contour_mm)
-            if thin_angle is not None:
-                region_angle = thin_angle
-            else:
-                region_angle = compute_optimal_fill_angle(
-                    region.contour_mm, fill_angle
-                )
-        else:
-            region_angle = fill_angle
+        region_angle = global_angle
 
-        # Apply pull compensation to contour
+        # Use raw (non-simplified) contour for fill to avoid gaps
+        # from polygon simplification. Simplified contour is for outline.
+        fill_contour = region.contour_raw_mm if region.contour_raw_mm is not None \
+            else region.contour_mm
+        fill_holes = region.holes_raw_mm if region.holes_raw_mm else \
+            (region.holes_mm if region.holes_mm else [])
         contour = region.contour_mm
         holes = region.holes_mm if region.holes_mm else []
 
         if comp_mm > 0:
             contour = apply_pull_compensation(contour, comp_mm)
+            fill_contour = apply_pull_compensation(fill_contour, comp_mm)
 
-        # For line-art style, skip fills on bright regions to avoid
-        # full-panel hatching while preserving dark strokes.
+        # For line-art style, skip fills only on very bright regions.
+        # Dark/mid-tone regions (shading, hair, shadows) always get fill.
         region_luma = sum(region.color_rgb) / 3.0
-        is_large_region = (region.area / image_area_px) >= 0.02
         skip_fill = (
             line_art_mode
             and monochrome_mode
-            and (region_luma >= 120.0 or is_large_region)
+            and region_luma >= 200.0
         )
+
+        effective_spacing = fill_density
+
+        # Skip fill for regions too thin to hold even 2 fill rows.
+        # These get outline only, avoiding broken/dashed fill artifacts.
+        if not skip_fill and fill_contour is not None and len(fill_contour) >= 5:
+            pts = fill_contour.astype(np.float32).reshape(-1, 1, 2)
+            rect = cv2.minAreaRect(pts)
+            min_dim = min(rect[1][0], rect[1][1])
+            if min_dim < effective_spacing * 2:
+                skip_fill = True
+
         if skip_fill:
             line_art_fill_skipped += 1
             fill_segments = []
         else:
             fill_segments = generate_fill_stitch_segments(
-                contour=contour,
-                holes=holes,
+                contour=fill_contour,
+                holes=fill_holes,
                 fill_angle=region_angle,
-                row_spacing=fill_density,
+                row_spacing=effective_spacing,
                 stitch_length=stitch_length,
                 underlay=underlay,
             )
@@ -355,11 +389,17 @@ def convert_photo_to_embroidery(
             for x, y in fill_segment:
                 pattern.add_stitch(x, y, StitchType.NORMAL)
 
-        # Outline stitches
+        # Outline stitches (smooth contour for curves)
         if outline and region.contour_mm is not None:
-            outline_stitch_len = 1.2 if line_art_mode else 2.5
+            # Skip smoothing for very simple polygons (rectangles, triangles)
+            # to avoid rounding intentionally sharp corners
+            if len(region.contour_mm) >= 5:
+                outline_contour = _chaikin_smooth(region.contour_mm, iterations=2)
+            else:
+                outline_contour = region.contour_mm
+            outline_stitch_len = 1.2 if line_art_mode else 1.5
             outline_pts = generate_outline_stitches(
-                contour=region.contour_mm,
+                contour=outline_contour,
                 stitch_length=outline_stitch_len,
                 satin_width=1.2,
                 satin=outline_satin,
@@ -449,8 +489,18 @@ def convert_photo_to_embroidery(
 def generate_preview(pattern: EmbroideryPattern,
                      output_path: str,
                      width: int = 800,
-                     bg_color: Tuple[int, int, int] = (240, 235, 220)):
-    """Generate a raster preview image of the embroidery pattern."""
+                     bg_color: Tuple[int, int, int] = (240, 235, 220),
+                     thread_width_mm: float = 0.4):
+    """Generate a raster preview image of the embroidery pattern.
+
+    Args:
+        pattern: Embroidery pattern to preview.
+        output_path: Output image path.
+        width: Canvas width in pixels.
+        bg_color: Background color.
+        thread_width_mm: Thread width in mm for line thickness.
+            Use 0.4 for realistic thread preview, 0 for 1px stitch lines.
+    """
     bounds = pattern.get_bounds()
     pat_w = bounds[2] - bounds[0]
     pat_h = bounds[3] - bounds[1]
@@ -460,6 +510,11 @@ def generate_preview(pattern: EmbroideryPattern,
 
     scale = (width - 40) / pat_w
     height = int(pat_h * scale) + 40
+
+    if thread_width_mm > 0:
+        thread_px = max(1, round(thread_width_mm * scale))
+    else:
+        thread_px = 1
 
     img = np.full((height, width, 3), bg_color, dtype=np.uint8)
 
@@ -491,7 +546,7 @@ def generate_preview(pattern: EmbroideryPattern,
             else:
                 bgr = (0, 0, 0)
 
-            cv2.line(img, (prev_x, prev_y), (px, py), bgr, 1,
+            cv2.line(img, (prev_x, prev_y), (px, py), bgr, thread_px,
                      cv2.LINE_AA)
 
         prev_x, prev_y = px, py

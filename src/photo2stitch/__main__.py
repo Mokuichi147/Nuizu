@@ -68,8 +68,11 @@ Examples:
     # Stitch
     stitch_group = parser.add_argument_group('Stitch options')
     stitch_group.add_argument(
-        '-d', '--density', type=float, default=0.4,
-        help='Fill row spacing in mm (lower=denser, default: 0.4)')
+        '-t', '--thread-width', type=float, default=0.4,
+        help='Thread width in mm (default: 0.4)')
+    stitch_group.add_argument(
+        '-d', '--density', type=float, default=None,
+        help='Fill row spacing in mm (default: same as thread-width)')
     stitch_group.add_argument(
         '-l', '--stitch-length', type=float, default=3.0,
         help='Maximum stitch length in mm (default: 3.0)')
@@ -138,6 +141,9 @@ Examples:
         print("Supported: .dst, .pes, .jef", file=sys.stderr)
         sys.exit(1)
 
+    # Fill density defaults to thread width
+    fill_density = args.density if args.density is not None else args.thread_width
+
     from .pipeline import convert_photo_to_embroidery, generate_preview
     from .svg_preview import generate_svg_preview
 
@@ -150,7 +156,7 @@ Examples:
             n_colors=args.colors,
             use_thread_palette=not args.free_colors,
             thread_brand=args.palette,
-            fill_density=args.density,
+            fill_density=fill_density,
             stitch_length=args.stitch_length,
             fill_angle=args.angle,
             auto_angle=args.auto_angle,
@@ -158,6 +164,7 @@ Examples:
             outline=not args.no_outline,
             outline_satin=args.satin_outline,
             pull_compensation=args.pull_comp,
+            thread_width=args.thread_width,
             blur_radius=args.blur,
             min_region_ratio=args.min_region,
             enhance_photo=not args.no_enhance,
@@ -171,18 +178,39 @@ Examples:
             base = args.preview_path or os.path.splitext(args.output)[0]
 
             if args.preview in ('png', 'both'):
-                png_path = base + '_preview.png' if not args.preview_path \
+                # Realistic thread-width preview
+                thread_path = base + '_preview.png' if not args.preview_path \
                     else base
-                generate_preview(pattern, png_path)
+                generate_preview(pattern, thread_path,
+                                thread_width_mm=args.thread_width)
                 if not args.quiet:
-                    print(f"Preview (PNG): {png_path}", file=sys.stderr)
+                    print(f"Preview (thread): {thread_path}",
+                          file=sys.stderr)
+
+                # Thin-line stitch position preview
+                stitch_path = base + '_stitches.png'
+                generate_preview(pattern, stitch_path, thread_width_mm=0)
+                if not args.quiet:
+                    print(f"Preview (stitch): {stitch_path}",
+                          file=sys.stderr)
 
             if args.preview in ('svg', 'both'):
-                svg_path = base + '_preview.svg' if not args.preview_path \
+                # Realistic thread-width SVG
+                svg_thread_path = base + '_preview.svg' if not args.preview_path \
                     else base.replace('.png', '.svg')
-                generate_svg_preview(pattern, svg_path)
+                generate_svg_preview(pattern, svg_thread_path,
+                                    thread_width_mm=args.thread_width)
                 if not args.quiet:
-                    print(f"Preview (SVG): {svg_path}", file=sys.stderr)
+                    print(f"Preview (SVG thread): {svg_thread_path}",
+                          file=sys.stderr)
+
+                # Thin-line stitch position SVG
+                svg_stitch_path = base + '_stitches.svg'
+                generate_svg_preview(pattern, svg_stitch_path,
+                                    thread_width_mm=0)
+                if not args.quiet:
+                    print(f"Preview (SVG stitch): {svg_stitch_path}",
+                          file=sys.stderr)
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

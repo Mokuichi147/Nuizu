@@ -15,14 +15,43 @@ class Region:
     """A contiguous color region to be stitched."""
     color_index: int
     color_rgb: Tuple[int, int, int]
-    contour: np.ndarray           # Main outer contour (N, 2) in pixel coords
+    contour: np.ndarray           # Simplified outer contour (N, 2) in pixel coords
     holes: List[np.ndarray] = field(default_factory=list)  # Inner contours
     area: float = 0.0            # Area in pixels
     centroid: Tuple[float, float] = (0.0, 0.0)
 
+    # Raw (non-simplified) contour for accurate fill mask
+    contour_raw: Optional[np.ndarray] = None
+    holes_raw: Optional[List[np.ndarray]] = None
+
     # Converted to mm coordinates after scaling
-    contour_mm: Optional[np.ndarray] = None
+    contour_mm: Optional[np.ndarray] = None       # Simplified (for outline)
     holes_mm: Optional[List[np.ndarray]] = None
+    contour_raw_mm: Optional[np.ndarray] = None    # Raw (for fill)
+    holes_raw_mm: Optional[List[np.ndarray]] = None
+
+
+def _chaikin_smooth(points: np.ndarray, iterations: int = 2) -> np.ndarray:
+    """Smooth polygon using Chaikin's corner-cutting algorithm.
+
+    Replaces each corner with two points at 25%/75% along adjacent
+    edges, producing a smoother curve with each iteration.
+    """
+    if len(points) < 4:
+        return points
+
+    pts = points.copy()
+    for _ in range(iterations):
+        n = len(pts)
+        new_pts = np.empty((2 * n, 2), dtype=pts.dtype)
+        for i in range(n):
+            p0 = pts[i]
+            p1 = pts[(i + 1) % n]
+            new_pts[2 * i] = 0.75 * p0 + 0.25 * p1
+            new_pts[2 * i + 1] = 0.25 * p0 + 0.75 * p1
+        pts = new_pts
+
+    return pts
 
 
 def extract_regions(label_map: np.ndarray,
@@ -81,26 +110,32 @@ def extract_regions(label_map: np.ndarray,
 
             # Simplify contour
             epsilon = max(simplify_epsilon_min,
-                          0.001 * cv2.arcLength(contour, True))
+                          0.0003 * cv2.arcLength(contour, True))
             approx = cv2.approxPolyDP(contour, epsilon, True)
             outer = approx.reshape(-1, 2).astype(np.float64)
 
             if len(outer) < 3:
                 continue
 
+            # Keep raw (non-simplified) contour for fill mask
+            outer_raw = contour.reshape(-1, 2).astype(np.float64)
+
             # Collect holes (children of this contour)
             holes = []
+            holes_raw = []
             child_idx = hier[2]
             while child_idx != -1:
                 hole_contour = contours[child_idx]
                 hole_area = cv2.contourArea(hole_contour)
                 if hole_area >= min_area * 0.5:
+                    hole_raw = hole_contour.reshape(-1, 2).astype(np.float64)
                     eps_h = max(simplify_epsilon_min,
-                                0.001 * cv2.arcLength(hole_contour, True))
+                                0.0003 * cv2.arcLength(hole_contour, True))
                     hole_approx = cv2.approxPolyDP(hole_contour, eps_h, True)
                     hole_pts = hole_approx.reshape(-1, 2).astype(np.float64)
                     if len(hole_pts) >= 3:
                         holes.append(hole_pts)
+                        holes_raw.append(hole_raw)
                 child_idx = hierarchy[child_idx][0]
 
             # Compute centroid
@@ -121,6 +156,8 @@ def extract_regions(label_map: np.ndarray,
                 holes=holes,
                 area=area,
                 centroid=(float(cx), float(cy)),
+                contour_raw=outer_raw,
+                holes_raw=holes_raw,
             ))
 
     # Sort by area descending (stitch large regions first for underlay)
@@ -158,5 +195,19 @@ def scale_regions_to_mm(regions: List[Region],
             hole_mm[:, 0] *= scale_x
             hole_mm[:, 1] *= scale_y
             region.holes_mm.append(hole_mm)
+
+        # Scale raw contours for fill mask
+        if region.contour_raw is not None:
+            region.contour_raw_mm = region.contour_raw.copy()
+            region.contour_raw_mm[:, 0] *= scale_x
+            region.contour_raw_mm[:, 1] *= scale_y
+
+        region.holes_raw_mm = []
+        if region.holes_raw:
+            for hole in region.holes_raw:
+                hole_mm = hole.copy()
+                hole_mm[:, 0] *= scale_x
+                hole_mm[:, 1] *= scale_y
+                region.holes_raw_mm.append(hole_mm)
 
     return regions
