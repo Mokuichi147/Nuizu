@@ -144,13 +144,14 @@ def extract_regions(label_map: np.ndarray,
 
         if morph_cleanup:
             # Close small remaining gaps.
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            # Use MORPH_RECT to preserve sharp corners (e.g. panel borders).
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
         # Dilate slightly so adjacent regions overlap by ~1px.
         # Without this, RETR_CCOMP contours touch but don't overlap,
         # leaving visible gaps between neighboring fill areas.
-        dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        dilate_k = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         mask = cv2.dilate(mask, dilate_k, iterations=1)
 
         # Use RETR_CCOMP: two-level hierarchy with holes.

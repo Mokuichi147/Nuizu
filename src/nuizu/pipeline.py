@@ -422,12 +422,29 @@ def convert_photo_to_embroidery(
 
         # Outline stitches (smooth contour for curves)
         if outline and region.contour_mm is not None:
-            # Skip smoothing for very simple polygons (rectangles, triangles)
-            # to avoid rounding intentionally sharp corners
-            if len(region.contour_mm) >= 5:
-                outline_contour = _chaikin_smooth(region.contour_mm, iterations=2)
+            # Skip smoothing when the contour has sharp corners
+            # (e.g. panel borders, rectangular frames) to avoid
+            # rounding intentionally geometric features.
+            has_sharp = False
+            pts = region.contour_mm
+            n = len(pts)
+            if n >= 3:
+                for i in range(n):
+                    v1 = pts[(i - 1) % n] - pts[i]
+                    v2 = pts[(i + 1) % n] - pts[i]
+                    len1 = np.linalg.norm(v1)
+                    len2 = np.linalg.norm(v2)
+                    if len1 > 0 and len2 > 0:
+                        cos_a = np.clip(
+                            np.dot(v1, v2) / (len1 * len2), -1, 1)
+                        angle = np.degrees(np.arccos(cos_a))
+                        if angle <= 100:
+                            has_sharp = True
+                            break
+            if not has_sharp and n >= 5:
+                outline_contour = _chaikin_smooth(pts, iterations=2)
             else:
-                outline_contour = region.contour_mm
+                outline_contour = pts
             outline_pts = generate_outline_stitches(
                 contour=outline_contour,
                 stitch_length=1.5,
