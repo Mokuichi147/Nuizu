@@ -141,6 +141,12 @@ def extract_regions(label_map: np.ndarray,
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
+        # Dilate slightly so adjacent regions overlap by ~1px.
+        # Without this, RETR_CCOMP contours touch but don't overlap,
+        # leaving visible gaps between neighboring fill areas.
+        dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        mask = cv2.dilate(mask, dilate_k, iterations=1)
+
         # Use RETR_CCOMP: two-level hierarchy with holes.
         # Outer contours define the region boundary; their child
         # contours are holes where other colors exist.

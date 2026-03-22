@@ -246,20 +246,19 @@ def _rotated_scanline_fill_segments(
             s_mm = ox + s / ppm
             e_mm = ox + e / ppm
 
-            span_stitches = []
-            x_mm = s_mm + (row_offset_mm % stitch_length if stitch_length else 0)
-            if x_mm > e_mm:
-                x_mm = s_mm
+            # Always start and end at the span edges so fill
+            # reaches the contour boundary on every row.  Stagger
+            # shifts only the intermediate stitch grid.
+            span_stitches = [(s_mm, row_y_mm)]
 
-            while x_mm <= e_mm:
+            offset = (row_offset_mm % stitch_length) if stitch_length else 0
+            x_mm = s_mm + offset + stitch_length
+            while x_mm < e_mm - 0.05:
                 span_stitches.append((x_mm, row_y_mm))
                 x_mm += stitch_length
 
-            if span_stitches and abs(span_stitches[-1][0] - e_mm) > 0.05:
+            if e_mm - s_mm > 0.05:
                 span_stitches.append((e_mm, row_y_mm))
-
-            if not span_stitches:
-                span_stitches.append((s_mm, row_y_mm))
 
             if going_reverse:
                 span_stitches.reverse()
