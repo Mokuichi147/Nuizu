@@ -137,10 +137,10 @@ def convert(
         "--skip-bg",
         help="背景色のステッチをスキップ",
     ),
-    strict_colors: bool = typer.Option(
+    force_colors: bool = typer.Option(
         False,
-        "--strict-colors",
-        help="-cで指定した色数を厳密に維持",
+        "--force-colors",
+        help="指定した色数（-c）を厳密に維持",
     ),
     preview: PreviewFormat | None = typer.Option(
         None,
@@ -201,7 +201,7 @@ def convert(
             min_region_ratio=min_region,
             auto_crop=auto_crop,
             skip_background=skip_bg,
-            strict_colors=strict_colors,
+            strict_colors=force_colors,
             verbose=not quiet,
         )
 

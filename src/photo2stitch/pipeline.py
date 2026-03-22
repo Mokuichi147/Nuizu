@@ -185,7 +185,7 @@ def convert_photo_to_embroidery(
     max_palette_colors = len(custom_pal) if use_thread_palette else 256
     if strict_colors and requested_n_colors > max_palette_colors:
         raise ValueError(
-            "strict-colorsでは指定色数が上限を超えています: "
+            "force-colorsでは指定色数が上限を超えています: "
             f"{requested_n_colors} > {max_palette_colors}"
         )
 
@@ -198,7 +198,7 @@ def convert_photo_to_embroidery(
 
     if strict_colors and len(palette) != requested_n_colors:
         raise RuntimeError(
-            "strict-colors有効時に指定色数を確保できませんでした: "
+            "force-colors有効時に指定色数を確保できませんでした: "
             f"{len(palette)} / {requested_n_colors}"
         )
 
@@ -283,7 +283,7 @@ def convert_photo_to_embroidery(
 
         if len(color_set) != requested_n_colors:
             raise RuntimeError(
-                "strict-colors有効時に最終色数を一致させられませんでした: "
+                "force-colors有効時に最終色数を一致させられませんでした: "
                 f"{len(color_set)} / {requested_n_colors}"
             )
 
