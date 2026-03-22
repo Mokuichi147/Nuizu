@@ -92,6 +92,7 @@ def rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
 def quantize_colors(image: np.ndarray, n_colors: int,
                     use_thread_palette: bool = True,
                     custom_palette: List = None,
+                    merge_close: bool = True,
                     ) -> Tuple[np.ndarray, List[Tuple[int, int, int]]]:
     """Quantize image colors for embroidery.
 
@@ -100,6 +101,7 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         n_colors: Target number of colors.
         use_thread_palette: If True, snap to nearest thread colors.
         custom_palette: Optional list of (R, G, B, Name) tuples.
+        merge_close: If True, merge near-identical clusters.
 
     Returns:
         Tuple of (label_map, palette):
@@ -126,8 +128,6 @@ def quantize_colors(image: np.ndarray, n_colors: int,
     labels = kmeans.fit_predict(pixels_lab)
 
     # Get cluster centers in RGB
-    centers_lab = kmeans.cluster_centers_
-    # Convert centers back to approximate RGB
     center_rgbs = []
     for label_idx in range(n_colors):
         mask = labels == label_idx
@@ -165,9 +165,10 @@ def quantize_colors(image: np.ndarray, n_colors: int,
     # K-means may split anti-aliased edges or gradients into separate
     # clusters that are too close in LAB space to be distinguishable
     # as separate thread colors.
-    label_map, final_palette = merge_close_clusters(
-        label_map, final_palette, min_delta_e=15.0,
-    )
+    if merge_close:
+        label_map, final_palette = merge_close_clusters(
+            label_map, final_palette, min_delta_e=15.0,
+        )
 
     return label_map, final_palette
 
@@ -237,15 +238,17 @@ def merge_close_clusters(
         else:
             keep, drop = b, a
 
+        # Don't absorb a meaningful cluster into one covering >30%
+        # of the image (e.g. skin tones into white background).
+        total_pixels = counts.sum()
+        if (counts[keep] / total_pixels > 0.3
+                and counts[drop] / total_pixels > 0.01):
+            break
+
         canonical[drop] = keep
         counts[keep] += counts[drop]
         counts[drop] = 0
 
-        # Update LAB center to weighted average
-        total = counts[keep]
-        w_keep = (total - counts[drop]) if counts[drop] > 0 else total
-        # Recalculate from original counts before merge
-        # Simpler: just keep the larger cluster's color since it dominates
         active.discard(drop)
 
     # Build final mapping

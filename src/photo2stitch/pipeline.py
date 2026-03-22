@@ -78,6 +78,7 @@ def convert_photo_to_embroidery(
     enhance_photo: bool = True,
     auto_crop: bool = False,
     skip_background: bool = False,
+    strict_colors: bool = False,
     # Output
     verbose: bool = True,
 ) -> EmbroideryPattern:
@@ -104,6 +105,7 @@ def convert_photo_to_embroidery(
         enhance_photo: Apply photo enhancement preprocessing.
         auto_crop: Auto-crop to subject.
         skip_background: Skip stitching detected background color.
+        strict_colors: Keep exactly n_colors in the output palette.
         verbose: Print progress messages.
 
     Returns:
@@ -112,6 +114,8 @@ def convert_photo_to_embroidery(
     def log(msg):
         if verbose:
             print(msg, file=sys.stderr)
+
+    requested_n_colors = n_colors
 
     # 1. Load and preprocess image
     log(f"[1/7] Loading image: {image_path}")
@@ -144,7 +148,7 @@ def convert_photo_to_embroidery(
         if min_region_ratio >= 0.0005:
             min_region_ratio = 0.00001
             log("  Line-art mode: min-region set to 0.00001")
-        if n_colors >= 8:
+        if n_colors >= 8 and not strict_colors:
             n_colors = 6
             log("  Line-art mode: colors reduced to 6")
         if underlay:
@@ -165,14 +169,17 @@ def convert_photo_to_embroidery(
             bg_color = detect_background(img_rgb, method='edge')
         if bg_color:
             log(f"  Background detected: RGB{bg_color}")
-    elif line_art_mode:
+    elif not strict_colors:
+        # Auto-detect bright background for any image type.
+        # A near-white background wastes a color slot and causes
+        # light-colored subjects (hair, skin) to merge into it.
         auto_bg = detect_background(img_rgb, method='corner')
         if auto_bg is None:
             auto_bg = detect_background(img_rgb, method='edge')
         if auto_bg is not None and min(auto_bg) >= 220:
             skip_background = True
             bg_color = auto_bg
-            log(f"  Line-art mode: auto-skip background RGB{bg_color}")
+            log(f"  Auto-skip bright background RGB{bg_color}")
 
     # Calculate dimensions
     if target_height_mm is None:
@@ -221,11 +228,25 @@ def convert_photo_to_embroidery(
         else:
             custom_pal = get_palette(thread_brand)
 
+    max_palette_colors = len(custom_pal) if use_thread_palette else 256
+    if strict_colors and requested_n_colors > max_palette_colors:
+        raise ValueError(
+            "strict-colorsでは指定色数が上限を超えています: "
+            f"{requested_n_colors} > {max_palette_colors}"
+        )
+
     label_map, palette = quantize_colors(
         img_rgb, n_colors, use_thread_palette,
         custom_palette=custom_pal,
+        merge_close=not strict_colors,
     )
     log(f"  Palette: {len(palette)} colors")
+
+    if strict_colors and len(palette) != requested_n_colors:
+        raise RuntimeError(
+            "strict-colors有効時に指定色数を確保できませんでした: "
+            f"{len(palette)} / {requested_n_colors}"
+        )
 
     # 4. Region segmentation
     log("[4/7] Segmenting regions...")
@@ -241,13 +262,23 @@ def convert_photo_to_embroidery(
         simplify_epsilon_min=0.25 if line_art_mode else 0.5,
     )
 
-    # Filter out background regions
+    # Filter out background regions.
+    # Only skip the single palette color closest to the detected
+    # background — never distance-threshold, which would also
+    # discard light foreground colors (e.g., light hair, pale skin).
     if skip_background and bg_color:
-        bg_distance_threshold = 90.0 if line_art_mode else 60.0
+        best_idx = None
+        best_dist = float('inf')
+        for idx, pc in enumerate(palette):
+            d = _color_distance(pc, bg_color)
+            if d < best_dist:
+                best_dist = d
+                best_idx = idx
+        bg_palette_color = palette[best_idx] if best_idx is not None else None
         before = len(regions)
-        regions = [r for r in regions
-                   if _color_distance(r.color_rgb, bg_color)
-                   > bg_distance_threshold]
+        if bg_palette_color is not None:
+            regions = [r for r in regions
+                       if r.color_rgb != bg_palette_color]
         log(f"  Skipped {before - len(regions)} background regions")
 
     log(f"  Found {len(regions)} regions")
@@ -275,6 +306,36 @@ def convert_photo_to_embroidery(
                 r=rgb[0], g=rgb[1], b=rgb[2],
                 name=f"Color {len(color_set) + 1}",
             )
+
+    if strict_colors:
+        # Ensure exact palette count even when segmentation drops tiny regions.
+        for rgb in palette:
+            if len(color_set) >= requested_n_colors:
+                break
+            if rgb not in color_set:
+                color_set[rgb] = ThreadColor(
+                    r=rgb[0], g=rgb[1], b=rgb[2],
+                    name=f"Color {len(color_set) + 1}",
+                )
+
+        if len(color_set) < requested_n_colors and custom_pal is not None:
+            for entry in custom_pal:
+                rgb = tuple(entry[:3])
+                if rgb in color_set:
+                    continue
+                color_set[rgb] = ThreadColor(
+                    r=rgb[0], g=rgb[1], b=rgb[2],
+                    name=f"Color {len(color_set) + 1}",
+                )
+                if len(color_set) >= requested_n_colors:
+                    break
+
+        if len(color_set) != requested_n_colors:
+            raise RuntimeError(
+                "strict-colors有効時に最終色数を一致させられませんでした: "
+                f"{len(color_set)} / {requested_n_colors}"
+            )
+
     pattern.colors = list(color_set.values())
 
     current_color = None
@@ -422,18 +483,23 @@ def convert_photo_to_embroidery(
         detail_added = 0
         if detail_contours:
             black_rgb = (0, 0, 0)
-            if black_rgb not in color_set:
-                color_set[black_rgb] = ThreadColor(
-                    r=0, g=0, b=0,
+            detail_rgb = black_rgb
+            if strict_colors and detail_rgb not in color_set and color_set:
+                # Keep color count fixed: reuse the darkest existing color.
+                detail_rgb = min(color_set.keys(), key=lambda rgb: sum(rgb))
+
+            if detail_rgb not in color_set:
+                color_set[detail_rgb] = ThreadColor(
+                    r=detail_rgb[0], g=detail_rgb[1], b=detail_rgb[2],
                     name=f"Color {len(color_set) + 1}",
                 )
                 pattern.colors = list(color_set.values())
 
-            if current_color != black_rgb:
+            if current_color != detail_rgb:
                 if current_color is not None:
                     pattern.add_trim()
                     pattern.add_color_change()
-                current_color = black_rgb
+                current_color = detail_rgb
 
             scale_x = target_width_mm / w
             scale_y = target_height_mm / h
