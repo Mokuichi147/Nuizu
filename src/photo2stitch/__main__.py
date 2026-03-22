@@ -66,7 +66,7 @@ def convert(
     palette: PaletteName = typer.Option(
         "auto",
         "--palette",
-        help="糸パレット（auto / janome / brother / madeira / generic）",
+        help="糸パレット",
     ),
     thread_width: float = typer.Option(
         0.4,
@@ -145,7 +145,7 @@ def convert(
     preview: PreviewFormat | None = typer.Option(
         None,
         "--preview",
-        help="プレビュー生成形式（png / svg / both）",
+        help="プレビュー生成形式",
     ),
     preview_path: str | None = typer.Option(
         None,
