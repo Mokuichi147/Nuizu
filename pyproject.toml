@@ -1,5 +1,5 @@
 [project]
-name = "photo2stitch"
+name = "nuizu"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-photo2stitch = "photo2stitch.__main__:main"
+nuizu = "nuizu.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]

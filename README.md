@@ -1,4 +1,4 @@
-# photo2stitch
+# Nuizu
 
 写真・イラスト・漫画など、あらゆる画像を刺繍用データファイルに変換するPython CLIツール。
 JANOME、Brother、その他主要刺繍機向けの出力形式に対応。
@@ -24,13 +24,13 @@ uv sync
 
 ```bash
 # 基本変換（JANOME JEF形式）
-uv run photo2stitch photo.jpg output.jef
+uv run nuizu photo.jpg output.jef
 
 # 12色、幅150mmで変換 + プレビュー生成
-uv run photo2stitch photo.png design.jef --colors 12 --width 150 --preview both
+uv run nuizu photo.png design.jef --colors 12 --width 150 --preview both
 
 # フル機能（自動角度、プルコンペンセーション、背景スキップ）
-uv run photo2stitch photo.jpg design.dst \
+uv run nuizu photo.jpg design.dst \
   --auto-angle --pull-comp 0.3 --skip-bg --preview svg
 ```
 
@@ -131,7 +131,7 @@ uv run photo2stitch photo.jpg design.dst \
 ## アーキテクチャ
 
 ```
-src/photo2stitch/
+src/nuizu/
 ├── __main__.py      # CLI エントリーポイント（Typer）
 ├── pipeline.py      # メイン変換パイプライン
 ├── preprocess.py    # 画像前処理（背景検出、自動クロップ）
@@ -155,7 +155,7 @@ src/photo2stitch/
 ### 写真をJANOMEで刺繍する
 
 ```bash
-uv run photo2stitch portrait.jpg portrait.jef \
+uv run nuizu portrait.jpg portrait.jef \
   --palette janome --colors 8 --width 100 \
   --auto-angle --pull-comp 0.3 --preview both
 ```
@@ -163,14 +163,14 @@ uv run photo2stitch portrait.jpg portrait.jef \
 ### 背景なしで被写体だけを刺繍
 
 ```bash
-uv run photo2stitch flower.jpg flower.dst \
+uv run nuizu flower.jpg flower.dst \
   --skip-bg --auto-crop --colors 6 --preview png
 ```
 
 ### 密度の高い高品質仕上げ
 
 ```bash
-uv run photo2stitch logo.png logo.pes \
+uv run nuizu logo.png logo.pes \
   --density 0.25 --stitch-length 2.5 --satin-outline \
   --pull-comp 0.4 --colors 10
 ```
@@ -178,7 +178,7 @@ uv run photo2stitch logo.png logo.pes \
 ### シンプルな変換
 
 ```bash
-uv run photo2stitch photo.jpg quick.dst \
+uv run nuizu photo.jpg quick.dst \
   --no-underlay --no-outline --colors 4
 ```
 

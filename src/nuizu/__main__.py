@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""photo2stitch のCLIエントリーポイント。"""
+"""nuizu のCLIエントリーポイント。"""
 
 from __future__ import annotations
 
@@ -25,10 +25,10 @@ app = typer.Typer(
         "  .pes   Brother / Babylock\n"
         "  .jef   JANOME\n\n"
         "使用例:\n"
-        "  photo2stitch photo.jpg design.dst\n"
-        "  photo2stitch photo.png design.jef --colors 12 --width 150\n"
-        "  photo2stitch photo.jpg design.pes --auto-angle --pull-comp 0.3\n"
-        "  photo2stitch photo.jpg design.dst --palette brother --preview svg"
+        "  nuizu photo.jpg design.dst\n"
+        "  nuizu photo.png design.jef --colors 12 --width 150\n"
+        "  nuizu photo.jpg design.pes --auto-angle --pull-comp 0.3\n"
+        "  nuizu photo.jpg design.dst --palette brother --preview svg"
     ),
 )
 
@@ -246,7 +246,7 @@ def convert(
 
 def main() -> None:
     """pyproject の scripts から呼ばれるエントリーポイント。"""
-    app(prog_name="photo2stitch")
+    app(prog_name="nuizu")
 
 
 if __name__ == "__main__":
