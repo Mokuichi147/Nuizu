@@ -142,17 +142,24 @@ def extract_regions(label_map: np.ndarray,
         if mask.sum() == 0:
             continue
 
-        if morph_cleanup:
+        # Skip morphological operations for small color regions
+        # (text strokes, thin lines) to preserve fine detail.
+        region_pixels = mask.sum() // 255
+        total_pixels = mask.shape[0] * mask.shape[1]
+        is_large = region_pixels > total_pixels * 0.02
+
+        if morph_cleanup and is_large:
             # Close small remaining gaps.
             # Use MORPH_RECT to preserve sharp corners (e.g. panel borders).
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-        # Dilate slightly so adjacent regions overlap by ~1px.
-        # Without this, RETR_CCOMP contours touch but don't overlap,
-        # leaving visible gaps between neighboring fill areas.
-        dilate_k = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        mask = cv2.dilate(mask, dilate_k, iterations=1)
+        # Dilate large regions slightly so adjacent fills overlap
+        # by ~1px, preventing visible gaps.  Small regions (text,
+        # thin lines) are not dilated to avoid doubling stroke width.
+        if is_large:
+            dilate_k = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+            mask = cv2.dilate(mask, dilate_k, iterations=1)
 
         # Use RETR_CCOMP: two-level hierarchy with holes.
         # Outer contours define the region boundary; their child

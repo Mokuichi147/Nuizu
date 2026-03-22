@@ -165,11 +165,21 @@ def quantize_colors(image: np.ndarray, n_colors: int,
             center_lab = rgb_to_lab(np.array([[rgb]], dtype=np.float64))[0, 0]
             dists = np.sqrt(np.sum((palette_lab - center_lab) ** 2, axis=1))
             sorted_idx = np.argsort(dists)
+            nearest = sorted_idx[0]
+            nearest_dist = dists[nearest]
+            # Find best available (unused) palette color
+            chosen = nearest
             for idx in sorted_idx:
                 if idx not in used_indices or len(used_indices) >= len(thread_pal):
                     chosen = idx
-                    used_indices.add(idx)
                     break
+            # If the available color is much farther than the nearest,
+            # allow a duplicate to avoid snapping to a wrong color
+            # (e.g. gray → teal).  The merge step will later collapse
+            # duplicate palette entries.
+            if dists[chosen] > nearest_dist * 2.5 and nearest_dist < 20:
+                chosen = nearest
+            used_indices.add(chosen)
             rgb = thread_pal[chosen][:3]
             snapped_palette.append((int(rgb[0]), int(rgb[1]), int(rgb[2])))
 
