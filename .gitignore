@@ -24,3 +24,12 @@ htmlcov/
 
 # OS files
 .DS_Store
+
+# Images and embroidery output files
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.jef
+*.dst
+*.pes
