@@ -48,8 +48,7 @@ uv run photo2stitch photo.jpg design.dst \
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
 | `-c, --colors` | 8 | 糸の色数 (2-32) |
-| `--palette` | janome | 糸ブランド (`janome`, `brother`, `madeira`, `generic`) |
-| `--free-colors` | - | パレットスナップ無効（量子化色をそのまま使用） |
+| `--palette` | auto | 糸パレット (`auto`, `janome`, `brother`, `madeira`, `generic`) |
 
 ### ステッチ
 

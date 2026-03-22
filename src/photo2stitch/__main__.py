@@ -11,7 +11,7 @@ from typing import Literal
 import typer
 
 
-PaletteName = Literal["janome", "brother", "madeira", "generic"]
+PaletteName = Literal["auto", "janome", "brother", "madeira", "generic"]
 PreviewFormat = Literal["png", "svg", "both"]
 
 app = typer.Typer(
@@ -63,15 +63,10 @@ def convert(
         "-c",
         help="使用する糸色数",
     ),
-    free_colors: bool = typer.Option(
-        False,
-        "--free-colors",
-        help="実糸パレットへのスナップを無効化",
-    ),
     palette: PaletteName = typer.Option(
-        "janome",
+        "auto",
         "--palette",
-        help="糸パレット（janome / brother / madeira / generic）",
+        help="糸パレット（auto / janome / brother / madeira / generic）",
     ),
     thread_width: float = typer.Option(
         0.4,
@@ -191,7 +186,7 @@ def convert(
             target_width_mm=width,
             target_height_mm=height,
             n_colors=colors,
-            use_thread_palette=not free_colors,
+            use_thread_palette=palette != "auto",
             thread_brand=palette,
             fill_density=fill_density,
             stitch_length=stitch_length,
