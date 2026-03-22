@@ -494,7 +494,7 @@ def generate_preview(pattern: EmbroideryPattern,
             color_idx = min(current_color_idx, len(colors) - 1)
             if colors:
                 c = colors[color_idx]
-                bgr = (c.b, c.g, c.r)
+                bgr = (int(c.b), int(c.g), int(c.r))
             else:
                 bgr = (0, 0, 0)
 

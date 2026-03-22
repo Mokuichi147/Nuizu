@@ -1,6 +1,6 @@
-# photo2stitch v0.2
+# photo2stitch
 
-写真を刺繍用データファイルに変換するPython CLIツール。
+写真・イラスト・漫画など、あらゆる画像を刺繍用データファイルに変換するPython CLIツール。
 JANOME、Brother、その他主要刺繍機向けの出力形式に対応。
 
 ## 対応出力形式
@@ -14,7 +14,7 @@ JANOME、Brother、その他主要刺繍機向けの出力形式に対応。
 ## 必要環境
 
 - `uv`
-- Python 3.12.10+（`pyproject.toml`準拠）
+- Python 3.12+
 
 ```bash
 uv sync
@@ -47,14 +47,16 @@ uv run photo2stitch photo.jpg design.dst \
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `-c, --colors` | 8 | 糸の色数 (2-32) |
+| `-c, --colors` | 8 | 糸の色数 |
 | `--palette` | auto | 糸パレット (`auto`, `janome`, `brother`, `madeira`, `generic`) |
+| `--force-colors` | - | 指定した色数を厳密に維持 |
 
 ### ステッチ
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `-d, --density` | 0.4 | フィル行間隔 mm（小さい＝密） |
+| `-t, --thread-width` | 0.4 | 糸幅 (mm) |
+| `-d, --density` | 糸幅と同値 | フィル行間隔 mm（小さい＝密） |
 | `-l, --stitch-length` | 3.0 | 最大ステッチ長 mm |
 | `-a, --angle` | 45 | フィルステッチ角度（度） |
 | `--auto-angle` | - | 領域ごとに最適フィル角度を自動決定 |
@@ -67,11 +69,10 @@ uv run photo2stitch photo.jpg design.dst \
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `--no-enhance` | - | 写真強調前処理を無効化 |
+| `--blur` | 3 | ぼかし半径（0=無効） |
+| `--min-region` | 0.001 | 最小領域サイズ（画像全体に対する比率） |
 | `--auto-crop` | - | 被写体を自動検出してクロップ |
 | `--skip-bg` | - | 背景色を自動検出してステッチをスキップ |
-| `--blur` | 3 | ぼかし半径（0=無効） |
-| `--min-region` | 0.003 | 最小領域サイズ（画像全体に対する比率） |
 
 ### 出力
 
@@ -87,24 +88,24 @@ uv run photo2stitch photo.jpg design.dst \
 [入力画像]
     │
     ▼
-[1] 画像前処理
+[1] 前処理
     ├── リサイズ（最大800px）
-    ├── ノイズ除去（Non-local means）
-    ├── コントラスト強調（CLAHE / LAB空間）
-    ├── 彩度ブースト（×1.2）
-    ├── エッジ保持平滑化（Bilateral filter）
-    └── アンシャープマスク
+    ├── Gaussianぼかし（ノイズ軽減）
+    └── Medianフィルタ（アンチエイリアス・JPEG圧縮ノイズ除去）
     │
     ▼
 [2] 色量子化
     ├── LAB色空間でK-meansクラスタリング
     ├── 刺繍糸パレットへスナップ（JANOME/Brother/Madeira）
-    └── 小領域除去（近隣色にマージ）
+    ├── 近似色クラスタの自動マージ（ΔE閾値）
+    └── 明るい背景の自動検出（前景比率チェック）
     │
     ▼
 [3] 領域分割
-    ├── OpenCV輪郭抽出（穴あり対応）
-    ├── モルフォロジー処理（クリーンアップ）
+    ├── ラベルマップ平滑化（多数決投票）
+    ├── 暗色ピクセルの復元（輪郭・ストローク保護）
+    ├── OpenCV輪郭抽出（RETR_CCOMP: 穴あり対応）
+    ├── モルフォロジー処理（小ギャップの閉鎖）
     └── ピクセル座標 → mm座標変換
     │
     ▼
@@ -116,6 +117,7 @@ uv run photo2stitch photo.jpg design.dst \
 [5] ステッチ生成
     ├── プルコンペンセーション（輪郭拡張）
     ├── 自動フィル角度決定（PCA / minAreaRect）
+    ├── 細幅領域のフィルスキップ（アウトラインのみ）
     ├── アンダーレイ（垂直方向・疎）
     ├── メインフィル（スキャンライン走査）
     ├── フィルコンペンセーション（行端延長）
@@ -130,12 +132,12 @@ uv run photo2stitch photo.jpg design.dst \
 
 ```
 src/photo2stitch/
-├── __main__.py      # CLI エントリーポイント
+├── __main__.py      # CLI エントリーポイント（Typer）
 ├── pipeline.py      # メイン変換パイプライン
-├── preprocess.py    # 画像前処理（ノイズ除去、コントラスト、エッジ保持平滑化）
-├── quantize.py      # 色量子化（K-means / LAB色空間）
+├── preprocess.py    # 画像前処理（背景検出、自動クロップ）
+├── quantize.py      # 色量子化（K-means / LAB色空間 / クラスタマージ）
 ├── palettes.py      # 実メーカー糸パレット（JANOME / Brother / Madeira）
-├── segment.py       # 領域分割（OpenCV contour）
+├── segment.py       # 領域分割（OpenCV contour / 穴あり階層抽出）
 ├── auto_angle.py    # フィル角度自動最適化（PCA / minAreaRect）
 ├── fill.py          # フィルステッチ生成（ラスタスキャンライン方式）
 ├── compensate.py    # プルコンペンセーション（布引き攣り補正）
@@ -153,7 +155,6 @@ src/photo2stitch/
 ### 写真をJANOMEで刺繍する
 
 ```bash
-# JANOME JEF形式、8色、幅100mm
 uv run photo2stitch portrait.jpg portrait.jef \
   --palette janome --colors 8 --width 100 \
   --auto-angle --pull-comp 0.3 --preview both
@@ -162,7 +163,6 @@ uv run photo2stitch portrait.jpg portrait.jef \
 ### 背景なしで被写体だけを刺繍
 
 ```bash
-# 背景自動検出＋スキップ、自動クロップ
 uv run photo2stitch flower.jpg flower.dst \
   --skip-bg --auto-crop --colors 6 --preview png
 ```
@@ -170,18 +170,16 @@ uv run photo2stitch flower.jpg flower.dst \
 ### 密度の高い高品質仕上げ
 
 ```bash
-# 密度0.25mm、ステッチ長2.5mm、サテンアウトライン
 uv run photo2stitch logo.png logo.pes \
   --density 0.25 --stitch-length 2.5 --satin-outline \
   --pull-comp 0.4 --colors 10
 ```
 
-### 軽量・高速版
+### シンプルな変換
 
 ```bash
-# アンダーレイ・アウトライン・強調処理なし
 uv run photo2stitch photo.jpg quick.dst \
-  --no-underlay --no-outline --no-enhance --colors 4
+  --no-underlay --no-outline --colors 4
 ```
 
 ## プルコンペンセーションの目安
@@ -192,9 +190,8 @@ uv run photo2stitch photo.jpg quick.dst \
 | 中厚生地（コットン、リネン） | 0.3 - 0.4 |
 | 厚い生地（デニム、キャンバス） | 0.4 - 0.6 |
 
-## 制限事項と注意点
+## 制限事項
 
 - 出力ファイルのバイナリ形式はリバースエンジニアリングに基づいています。実機での動作は糸・生地・テンションなど多くの要因に依存します。
 - 写真の変換品質は元画像のコントラストと色の明確さに大きく左右されます。
 - 非常に大きな刺繍（200mm超）ではステッチ数が数万を超え、実機での刺繍時間が長くなります。
-- 最初はシンプルな画像（ロゴ、イラスト）で試し、仕上がりを確認してからフォトリアルな変換に進むことをお勧めします。

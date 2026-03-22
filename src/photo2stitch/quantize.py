@@ -133,7 +133,9 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         mask = labels == label_idx
         if mask.any():
             mean_rgb = pixels[mask].mean(axis=0)
-            center_rgbs.append(tuple(np.clip(mean_rgb, 0, 255).astype(int)))
+            clamped = np.clip(mean_rgb, 0, 255).astype(int)
+            center_rgbs.append((int(clamped[0]), int(clamped[1]),
+                                int(clamped[2])))
         else:
             center_rgbs.append((128, 128, 128))
 
@@ -153,7 +155,8 @@ def quantize_colors(image: np.ndarray, n_colors: int,
                     chosen = idx
                     used_indices.add(idx)
                     break
-            snapped_palette.append(thread_pal[chosen][:3])
+            rgb = thread_pal[chosen][:3]
+            snapped_palette.append((int(rgb[0]), int(rgb[1]), int(rgb[2])))
 
         final_palette = snapped_palette
     else:
