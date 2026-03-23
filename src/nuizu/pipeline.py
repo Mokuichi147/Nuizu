@@ -18,7 +18,7 @@ from .quantize import quantize_colors
 from .segment import extract_regions, scale_regions_to_mm, Region, _chaikin_smooth
 from .fill import generate_fill_stitch_segments, generate_outline_stitches
 from .optimize import optimize_stitch_order, split_long_stitches
-from .compensate import apply_pull_compensation, apply_fill_compensation
+from .compensate import apply_pull_compensation, apply_fill_compensation, inset_contour
 from .auto_angle import compute_optimal_fill_angle
 from .palettes import get_palette
 from .formats.common import (
@@ -365,6 +365,22 @@ def convert_photo_to_embroidery(
             contour = apply_pull_compensation(contour, comp_mm)
             fill_contour = apply_pull_compensation(fill_contour, comp_mm)
 
+        # Inset contours by half the thread width so the outer edge
+        # of the stitched thread aligns with the original boundary.
+        inset_mm = thread_width / 2
+        if inset_mm > 0:
+            inset_fill = inset_contour(fill_contour, inset_mm)
+            if inset_fill is not None:
+                fill_contour = inset_fill
+            inset_holes = []
+            for h in fill_holes:
+                # Holes expand outward (inverted inset) to keep
+                # thread away from hole boundaries.
+                ih = apply_pull_compensation(h, inset_mm)
+                inset_holes.append(ih)
+            if inset_holes:
+                fill_holes = inset_holes
+
         skip_fill = False
         effective_spacing = fill_density
 
@@ -422,11 +438,17 @@ def convert_photo_to_embroidery(
 
         # Outline stitches (smooth contour for curves)
         if outline and region.contour_mm is not None:
+            # Inset the outline by half the thread width so the outer
+            # edge of the thread aligns with the original contour.
+            inset_mm = thread_width / 2
+            inset_pts = inset_contour(region.contour_mm, inset_mm)
+            base_contour = inset_pts if inset_pts is not None else region.contour_mm
+
             # Skip smoothing when the contour has sharp corners
             # (e.g. panel borders, rectangular frames) to avoid
             # rounding intentionally geometric features.
             has_sharp = False
-            pts = region.contour_mm
+            pts = base_contour
             n = len(pts)
             if n >= 3:
                 for i in range(n):

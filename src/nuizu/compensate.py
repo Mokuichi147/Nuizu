@@ -12,7 +12,7 @@ Typical compensation values:
 
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 def apply_pull_compensation(
@@ -89,6 +89,82 @@ def apply_pull_compensation(
             expanded[i] = contour_mm[i] - offset
 
     return expanded
+
+
+def inset_contour(
+    contour_mm: np.ndarray,
+    inset_mm: float = 0.2,
+) -> Optional[np.ndarray]:
+    """Shrink a contour inward by inset_mm.
+
+    Used to offset the outline stitch path inward by half the thread
+    width so the outer edge of the thread aligns with the original
+    contour boundary.
+
+    Args:
+        contour_mm: (N, 2) contour points in mm.
+        inset_mm: Inward offset distance in mm.
+
+    Returns:
+        Inset contour array, or None if the contour collapses.
+    """
+    if len(contour_mm) < 3 or inset_mm <= 0:
+        return contour_mm.copy()
+
+    # Use the same vertex-normal logic as pull compensation,
+    # but offset inward instead of outward.
+    n = len(contour_mm)
+    inset = np.empty_like(contour_mm)
+
+    for i in range(n):
+        p_prev = contour_mm[(i - 1) % n]
+        p_curr = contour_mm[i]
+        p_next = contour_mm[(i + 1) % n]
+
+        e1 = p_curr - p_prev
+        e2 = p_next - p_curr
+
+        n1 = np.array([-e1[1], e1[0]])
+        n2 = np.array([-e2[1], e2[0]])
+
+        len1 = np.linalg.norm(n1)
+        len2 = np.linalg.norm(n2)
+
+        if len1 > 1e-8:
+            n1 /= len1
+        if len2 > 1e-8:
+            n2 /= len2
+
+        avg_normal = n1 + n2
+        avg_len = np.linalg.norm(avg_normal)
+        if avg_len > 1e-8:
+            avg_normal /= avg_len
+        else:
+            avg_normal = n1
+
+        dot = np.dot(n1, n2)
+        miter = 1.0 / max(0.5, (1.0 + dot) / 2.0)
+        miter = min(miter, 3.0)
+
+        inset[i] = p_curr + avg_normal * inset_mm * miter
+
+    # Determine which direction is inward by checking area change.
+    # Inset should produce a *smaller* area.
+    orig_area = abs(_polygon_area(contour_mm))
+    new_area = abs(_polygon_area(inset))
+
+    if new_area >= orig_area:
+        # Normals pointed outward — flip to go inward.
+        for i in range(n):
+            offset = inset[i] - contour_mm[i]
+            inset[i] = contour_mm[i] - offset
+        new_area = abs(_polygon_area(inset))
+
+    # If the inset collapsed the contour, return None.
+    if new_area < orig_area * 0.05:
+        return None
+
+    return inset
 
 
 def apply_fill_compensation(
