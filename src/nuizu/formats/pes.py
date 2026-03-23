@@ -79,6 +79,10 @@ PEC_COLORS = [
     (255, 200, 200),  # 64 - Applique
 ]
 
+_PEC_ICON_WIDTH = 48
+_PEC_ICON_HEIGHT = 38
+_PEC_ICON_BYTES = (_PEC_ICON_WIDTH // 8) * _PEC_ICON_HEIGHT  # 228
+
 
 def _find_nearest_pec_color(r: int, g: int, b: int) -> int:
     """Find nearest PEC color index for given RGB."""
@@ -100,31 +104,25 @@ def write_pes(pattern: EmbroideryPattern, filepath: str):
     """Write embroidery pattern to Brother PES v1 file."""
     pattern.center_pattern()
 
-    # Build PEC stitch data
-    pec_data = _build_pec_data(pattern)
-
     with open(filepath, 'wb') as f:
-        # PES header
+        # --- PES header ---
         f.write(b'#PES0001')
 
-        # PEC offset (will be filled after header)
+        # PEC offset placeholder
         pec_offset_pos = f.tell()
-        f.write(struct.pack('<I', 0))  # Placeholder
+        f.write(struct.pack('<I', 0))
 
-        # Minimal PES header (no embedded objects)
-        f.write(struct.pack('<H', 1))   # Hoop size (0=100x100, 1=130x180)
-        f.write(struct.pack('<H', 1))   # Use existing design
-        f.write(struct.pack('<H', 0))   # Segment count = 0
+        # Truncated v1: 10 bytes of zero padding
+        f.write(bytes(10))
 
-        # Write PEC offset
-        pec_offset = f.tell()
-        current = f.tell()
+        # Record PEC offset and patch it
+        pec_offset = f.tell()  # should be 22 (0x16)
         f.seek(pec_offset_pos)
         f.write(struct.pack('<I', pec_offset))
-        f.seek(current)
+        f.seek(pec_offset)
 
-        # PEC section
-        _write_pec_section(f, pattern, pec_data)
+        # --- PEC section ---
+        _write_pec_section(f, pattern)
 
 
 def _build_pec_data(pattern: EmbroideryPattern) -> bytearray:
@@ -132,29 +130,28 @@ def _build_pec_data(pattern: EmbroideryPattern) -> bytearray:
     data = bytearray()
     last_x = 0.0
     last_y = 0.0
+    color_change_number = 0
 
-    for stitch in pattern.stitches:
+    for i, stitch in enumerate(pattern.stitches):
         dx = int(round((stitch.x - last_x) * 10))  # 0.1mm units
         dy = int(round((stitch.y - last_y) * 10))
 
         if stitch.stitch_type == StitchType.END:
             data.append(0xFF)
-            break
+            return data
 
         if stitch.stitch_type == StitchType.COLOR_CHANGE:
             data.append(0xFE)
             data.append(0xB0)
-            # Color index byte
-            color_count = len([s for s in pattern.stitches[:pattern.stitches.index(stitch)]
-                              if s.stitch_type == StitchType.COLOR_CHANGE])
-            data.append(color_count + 1)
+            color_change_number += 1
+            # Alternating 0x02 / 0x01 per pyembroidery convention
+            data.append((color_change_number % 2) + 1)
             last_x = stitch.x
             last_y = stitch.y
             continue
 
         if stitch.stitch_type == StitchType.TRIM:
-            # Encode trim as large jump
-            _pec_encode_stitch(data, dx, dy, jump=True)
+            _pec_encode_move(data, dx, dy, trim=True)
             last_x = stitch.x
             last_y = stitch.y
             continue
@@ -165,69 +162,128 @@ def _build_pec_data(pattern: EmbroideryPattern) -> bytearray:
         while abs(dx) > 2047 or abs(dy) > 2047:
             step_x = max(-2047, min(2047, dx))
             step_y = max(-2047, min(2047, dy))
-            _pec_encode_stitch(data, step_x, step_y, jump=True)
+            _pec_encode_move(data, step_x, step_y, jump=True)
             dx -= step_x
             dy -= step_y
 
-        _pec_encode_stitch(data, dx, dy, jump=is_jump)
+        if is_jump:
+            _pec_encode_move(data, dx, dy, jump=True)
+        else:
+            _pec_encode_stitch(data, dx, dy)
 
         last_x = stitch.x
         last_y = stitch.y
 
+    # End marker (only if not already written by an END stitch)
     data.append(0xFF)
     return data
 
 
-def _pec_encode_stitch(data: bytearray, dx: int, dy: int,
-                       jump: bool = False):
-    """Encode a single PEC stitch."""
-    if -63 <= dx <= 63 and -63 <= dy <= 63 and not jump:
-        # Short form: 1 byte each
+def _pec_encode_stitch(data: bytearray, dx: int, dy: int):
+    """Encode a normal PEC stitch (short form if possible)."""
+    if -64 < dx < 63 and -64 < dy < 63:
         data.append(dx & 0x7F)
         data.append(dy & 0x7F)
     else:
-        # Long form: 2 bytes each (12-bit signed)
-        val_x = dx & 0x0FFF
-        if jump:
-            val_x |= 0x1000  # Jump flag
-        data.append(0x80 | ((val_x >> 8) & 0x0F) | (0x10 if jump else 0))
-        data.append(val_x & 0xFF)
-
-        val_y = dy & 0x0FFF
-        if jump:
-            val_y |= 0x1000
-        data.append(0x80 | ((val_y >> 8) & 0x0F) | (0x10 if jump else 0))
-        data.append(val_y & 0xFF)
+        _pec_encode_long(data, dx, dy, flag=0)
 
 
-def _write_pec_section(f, pattern: EmbroideryPattern,
-                       pec_data: bytearray):
+def _pec_encode_move(data: bytearray, dx: int, dy: int,
+                     jump: bool = False, trim: bool = False):
+    """Encode a PEC jump or trim move (always long form)."""
+    if trim:
+        flag = 0x20  # TRIM_CODE
+    elif jump:
+        flag = 0x10  # JUMP_CODE
+    else:
+        flag = 0
+    _pec_encode_long(data, dx, dy, flag=flag)
+
+
+def _pec_encode_long(data: bytearray, dx: int, dy: int, flag: int):
+    """Encode a long-form PEC stitch with optional command flag."""
+    vx = dx & 0x0FFF
+    vx |= 0x8000 | (flag << 8)
+    data.append((vx >> 8) & 0xFF)
+    data.append(vx & 0xFF)
+
+    vy = dy & 0x0FFF
+    vy |= 0x8000 | (flag << 8)
+    data.append((vy >> 8) & 0xFF)
+    data.append(vy & 0xFF)
+
+
+def _write_pec_section(f, pattern: EmbroideryPattern):
     """Write the PEC section of a PES file."""
-    # PEC label
-    label = pattern.name[:16].ljust(16)
-    f.write(f"LA:{label}\r".encode('ascii', errors='replace')[:20])
-
-    # Padding
-    f.write(bytes(11))
-
-    # PEC color count
     n_colors = max(1, len(pattern.colors))
-    f.write(struct.pack('B', n_colors - 1))
 
-    # Color indices (map to PEC palette)
+    # --- PEC label (20 bytes) ---
+    name = pattern.name[:8]
+    label = f"LA:{name:<16s}\r".encode('ascii', errors='replace')[:20]
+    f.write(label)
+
+    # --- Padding: 12 bytes of 0x20 ---
+    f.write(b'\x20' * 12)
+
+    # --- Fixed fields ---
+    f.write(b'\xFF\x00')
+
+    # Thumbnail parameters
+    stride = _PEC_ICON_WIDTH // 8  # 6
+    f.write(struct.pack('B', stride))
+    f.write(struct.pack('B', _PEC_ICON_HEIGHT))  # 38
+
+    # --- 12 bytes of 0x20 ---
+    f.write(b'\x20' * 12)
+
+    # --- Color count and color index table ---
+    f.write(struct.pack('B', n_colors - 1))
+    color_indices = []
     for color in pattern.colors:
         idx = _find_nearest_pec_color(color.r, color.g, color.b)
+        color_indices.append(idx)
         f.write(struct.pack('B', idx))
 
-    # Pad to 463 bytes from start of PEC section
-    pad_needed = 463 - (20 + 11 + 1 + len(pattern.colors))
-    if pad_needed > 0:
-        f.write(bytes(pad_needed))
+    # Pad color table to 463 entries with 0x20
+    for _ in range(n_colors, 463):
+        f.write(b'\x20')
 
-    # Thumbnail placeholder (blank 6x38 bitmap)
-    thumb_size = 6 * 38
-    f.write(bytes(thumb_size))
-    f.write(bytes(thumb_size))  # Second thumbnail
+    # --- Stitch block header (16 bytes) ---
+    f.write(b'\x00\x00')  # Fixed
 
-    # Stitch data
+    # Stitch block length placeholder (3 bytes, uint24 LE)
+    block_len_pos = f.tell()
+    f.write(b'\x00\x00\x00')
+
+    f.write(b'\x31\xFF\xF0')  # Fixed magic
+
+    # Design dimensions in 0.1mm units
+    min_x, min_y, max_x, max_y = pattern.get_bounds()
+    width_units = int(round((max_x - min_x) * 10))
+    height_units = int(round((max_y - min_y) * 10))
+    f.write(struct.pack('<h', width_units))
+    f.write(struct.pack('<h', height_units))
+
+    # Fixed center offsets
+    f.write(struct.pack('<H', 0x01E0))  # 480
+    f.write(struct.pack('<H', 0x01B0))  # 432
+
+    # --- Stitch data ---
+    stitch_block_start = block_len_pos - 2  # from 0x00 0x00
+    pec_data = _build_pec_data(pattern)
     f.write(pec_data)
+
+    # --- Graphics / thumbnails ---
+    # Blank thumbnail for overall view
+    f.write(bytes(_PEC_ICON_BYTES))
+    # One blank thumbnail per color
+    for _ in range(n_colors):
+        f.write(bytes(_PEC_ICON_BYTES))
+
+    # --- Patch stitch block length ---
+    stitch_block_end = f.tell()
+    block_length = stitch_block_end - stitch_block_start
+    f.seek(block_len_pos)
+    # uint24 little-endian
+    f.write(struct.pack('<I', block_length)[:3])
+    f.seek(stitch_block_end)
