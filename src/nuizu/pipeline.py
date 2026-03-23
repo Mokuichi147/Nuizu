@@ -142,30 +142,8 @@ def convert_photo_to_embroidery(
             bg_color = detect_background(img_rgb, method='edge')
         if bg_color:
             log(f"  Background detected: RGB{bg_color}")
-    elif not strict_colors:
-        # Auto-detect bright background for any image type.
-        # A near-white background wastes a color slot and causes
-        # light-colored subjects (hair, skin) to merge into it.
-        auto_bg = detect_background(img_rgb, method='corner')
-        if auto_bg is None:
-            auto_bg = detect_background(img_rgb, method='edge')
-        if auto_bg is not None and min(auto_bg) >= 220:
-            # Only auto-skip when the foreground covers enough of the
-            # image.  If foreground is too sparse the subject relies on
-            # contrast with the white areas and skipping them would
-            # leave the output unrecognizable.
-            bg_arr = np.array(auto_bg, dtype=np.float64)
-            pixel_dists = np.sqrt(np.sum(
-                (img_rgb.astype(np.float64) - bg_arr) ** 2, axis=2
-            ))
-            fg_ratio = float(np.mean(pixel_dists > 60))
-            if fg_ratio >= 0.35:
-                skip_background = True
-                bg_color = auto_bg
-                log(f"  Auto-skip bright background RGB{bg_color}")
-            else:
-                log(f"  Background RGB{auto_bg} detected but "
-                    f"foreground too sparse ({fg_ratio:.0%}), keeping")
+    else:
+        pass  # No background skipping unless explicitly requested
 
     # Calculate dimensions
     if target_height_mm is None:
