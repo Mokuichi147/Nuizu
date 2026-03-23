@@ -365,22 +365,6 @@ def convert_photo_to_embroidery(
             contour = apply_pull_compensation(contour, comp_mm)
             fill_contour = apply_pull_compensation(fill_contour, comp_mm)
 
-        # Inset contours by half the thread width so the outer edge
-        # of the stitched thread aligns with the original boundary.
-        inset_mm = thread_width / 2
-        if inset_mm > 0:
-            inset_fill = inset_contour(fill_contour, inset_mm)
-            if inset_fill is not None:
-                fill_contour = inset_fill
-            inset_holes = []
-            for h in fill_holes:
-                # Holes expand outward (inverted inset) to keep
-                # thread away from hole boundaries.
-                ih = apply_pull_compensation(h, inset_mm)
-                inset_holes.append(ih)
-            if inset_holes:
-                fill_holes = inset_holes
-
         skip_fill = False
         effective_spacing = fill_density
 

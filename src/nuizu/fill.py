@@ -15,7 +15,7 @@ _RASTER_PPM = 20
 
 def _rasterize_region(contour_mm: np.ndarray,
                       holes_mm: List[np.ndarray],
-                      ppm: float = _RASTER_PPM
+                      ppm: float = _RASTER_PPM,
                       ) -> Tuple[np.ndarray, float, float]:
     """Rasterize a region to a binary mask for scanline processing.
 
@@ -43,6 +43,7 @@ def _rasterize_region(contour_mm: np.ndarray,
 
     contour_px = to_px(contour_mm)
     cv2.fillPoly(mask, [contour_px], 255)
+    cv2.polylines(mask, [contour_px], True, 255, 1)
     for hole in holes_mm:
         cv2.fillPoly(mask, [to_px(hole)], 0)
 
