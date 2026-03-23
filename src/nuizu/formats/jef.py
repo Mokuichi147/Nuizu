@@ -4,9 +4,10 @@ JEF is JANOME's proprietary embroidery format.
 Coordinates are in 0.1mm units with relative movements.
 
 File structure:
-  - Variable-length header with metadata
-  - Color table
-  - Stitch data (2 bytes per axis per command)
+  - Fixed header (116 bytes)
+  - Color index table (color_count * 4 bytes)
+  - Color type table (color_count * 4 bytes)
+  - Stitch data
 """
 
 import struct
@@ -38,6 +39,17 @@ JEF_COLORS = [
     (245, 222, 179, "Wheat"),
 ]
 
+# Hoop definitions: (half_width, half_height) in 0.1mm
+_HOOPS = [
+    (550, 550),    # 0: 110x110mm
+    (250, 250),    # 1: 50x50mm
+    (700, 1000),   # 2: 140x200mm
+    (630, 550),    # 3: 126x110mm (JANOME default)
+    (1000, 1000),  # 4: 200x200mm
+]
+
+_MAX_STITCH = 127
+
 
 def _find_nearest_jef_color(r: int, g: int, b: int) -> int:
     """Find nearest JEF color index."""
@@ -54,167 +66,169 @@ def _find_nearest_jef_color(r: int, g: int, b: int) -> int:
 
 
 def write_jef(pattern: EmbroideryPattern, filepath: str):
-    """Write embroidery pattern to JANOME JEF file.
-
-    Args:
-        pattern: The embroidery pattern to write.
-        filepath: Output file path.
-    """
+    """Write embroidery pattern to JANOME JEF file."""
     pattern.center_pattern()
 
     n_colors = max(1, len(pattern.colors))
 
-    # Build stitch data first to know its size
-    stitch_data = _build_jef_stitches(pattern)
+    # Build stitch data first to count points
+    stitch_data, point_count = _build_jef_stitches(pattern)
+
+    # Design half-extents in 0.1mm
+    bounds = pattern.get_bounds()
+    half_w = int(round((bounds[2] - bounds[0]) * 10)) // 2
+    half_h = int(round((bounds[3] - bounds[1]) * 10)) // 2
 
     with open(filepath, 'wb') as f:
-        # --- JEF Header ---
+        # --- JEF Header (116 bytes) ---
 
         # Offset to stitch data
         header_size = 116 + n_colors * 8
-        f.write(struct.pack('<I', header_size))
+        f.write(struct.pack('<i', header_size))
 
-        # Flags
-        f.write(struct.pack('<I', 0x00000014))
+        # Flags (fixed 0x14)
+        f.write(struct.pack('<i', 0x00000014))
 
-        # Date/time
+        # Date/time (14 bytes) + 2 bytes padding (null)
         now = datetime.datetime.now()
-        f.write(struct.pack('<14s',
-                            now.strftime("%Y%m%d%H%M%S").encode('ascii')))
+        date_str = now.strftime("%Y%m%d%H%M%S").encode('ascii')
+        f.write(date_str[:14])
+        f.write(b'\x00\x00')
 
-        # Padding (2 bytes)
-        f.write(struct.pack('<H', 0))
+        # Color count (= number of thread changes + 1 initial)
+        f.write(struct.pack('<i', n_colors))
 
-        # Thread count
-        f.write(struct.pack('<I', n_colors))
+        # Point count (includes END)
+        f.write(struct.pack('<i', point_count))
 
-        # Stitch count
-        stitch_count = pattern.stitch_count()
-        f.write(struct.pack('<I', stitch_count))
+        # Hoop code (0 = 110x110)
+        f.write(struct.pack('<i', 0))
 
-        # Hoop code (0 = JANOME default 126x110mm)
-        f.write(struct.pack('<I', 0))
+        # Design half-extents (written twice per spec)
+        f.write(struct.pack('<i', half_w))
+        f.write(struct.pack('<i', half_h))
+        f.write(struct.pack('<i', half_w))
+        f.write(struct.pack('<i', half_h))
 
-        # Design area (in 0.1mm)
-        bounds = pattern.get_bounds()
-        extent_x = int((bounds[2] - bounds[0]) * 10)
-        extent_y = int((bounds[3] - bounds[1]) * 10)
-
-        # Hoop bounds (half extents from center)
-        half_x = extent_x // 2
-        half_y = extent_y // 2
-        f.write(struct.pack('<i', half_x))    # +X extent
-        f.write(struct.pack('<i', half_y))    # +Y extent
-        f.write(struct.pack('<i', -half_x))   # -X extent
-        f.write(struct.pack('<i', -half_y))   # -Y extent
-
-        # Design bounds (same as hoop for now)
-        f.write(struct.pack('<i', half_x))
-        f.write(struct.pack('<i', half_y))
-        f.write(struct.pack('<i', -half_x))
-        f.write(struct.pack('<i', -half_y))
-
-        # Additional design bounds (repeat)
-        f.write(struct.pack('<i', half_x))
-        f.write(struct.pack('<i', half_y))
-        f.write(struct.pack('<i', -half_x))
-        f.write(struct.pack('<i', -half_y))
-
-        # More bounds (4th set)
-        f.write(struct.pack('<i', half_x))
-        f.write(struct.pack('<i', half_y))
-        f.write(struct.pack('<i', -half_x))
-        f.write(struct.pack('<i', -half_y))
+        # Hoop edge distances for 4 hoop types
+        for hoop_hw, hoop_hh in _HOOPS[:4]:
+            x_edge = hoop_hw - half_w
+            y_edge = hoop_hh - half_h
+            if x_edge < 0 or y_edge < 0:
+                # Design doesn't fit this hoop
+                f.write(struct.pack('<iiii', -1, -1, -1, -1))
+            else:
+                f.write(struct.pack('<iiii', x_edge, y_edge, x_edge, y_edge))
 
         # --- Color Table ---
+        # Table 1: color indices (all n_colors entries)
+        color_indices = []
         for color in pattern.colors:
-            jef_idx = _find_nearest_jef_color(color.r, color.g, color.b)
-            f.write(struct.pack('<I', jef_idx))
-            # Color type (0 = normal)
-            f.write(struct.pack('<I', 0))
+            color_indices.append(
+                _find_nearest_jef_color(color.r, color.g, color.b))
+        # Pad if fewer colors than n_colors
+        while len(color_indices) < n_colors:
+            color_indices.append(0)
+        for idx in color_indices:
+            f.write(struct.pack('<i', idx))
 
-        # Pad if fewer colors than expected
-        written_colors = len(pattern.colors)
-        for _ in range(n_colors - written_colors):
-            f.write(struct.pack('<I', 0))
-            f.write(struct.pack('<I', 0))
+        # Table 2: color types (all 0x0D)
+        for _ in range(n_colors):
+            f.write(struct.pack('<i', 0x0D))
 
         # --- Stitch Data ---
         f.write(stitch_data)
 
 
-def _build_jef_stitches(pattern: EmbroideryPattern) -> bytearray:
-    """Build JEF stitch data.
-
-    JEF uses 2-byte signed values for dx and dy.
-    Normal stitch: dx, dy within [-124, 124]
-    Trim/Jump: dx | 0x8000, dy | 0x8000
-    Color change: 0x8001, 0x8001 (after trim)
-    End: 0x8000, 0x8000
-    """
+def _build_jef_stitches(pattern: EmbroideryPattern):
+    """Build JEF stitch data. Returns (data, point_count)."""
     data = bytearray()
     last_x = 0.0
     last_y = 0.0
+    point_count = 1  # END counts as 1
 
     for stitch in pattern.stitches:
         dx = int(round((stitch.x - last_x) * 10))
         dy = int(round((stitch.y - last_y) * 10))
 
         if stitch.stitch_type == StitchType.END:
-            # End marker
-            data.extend(struct.pack('<hh', -32768, -32768))
-            break
+            data.extend(b'\x80\x10')
+            return data, point_count
 
         if stitch.stitch_type == StitchType.COLOR_CHANGE:
-            # Trim then color change
-            data.extend(struct.pack('<hh', -32767, -32767))
+            _jef_write_command(data, 0x01, dx, dy)
+            point_count += 2
             last_x = stitch.x
             last_y = stitch.y
             continue
 
-        if stitch.stitch_type in (StitchType.JUMP, StitchType.TRIM):
-            # Jump/move
-            _jef_write_move(data, dx, dy, is_jump=True)
+        if stitch.stitch_type == StitchType.TRIM:
+            # Trim = jump with (0,0) repeated 3 times
+            for _ in range(3):
+                _jef_write_command(data, 0x02, 0, 0)
+                point_count += 2
+            last_x = stitch.x
+            last_y = stitch.y
+            continue
+
+        if stitch.stitch_type == StitchType.JUMP:
+            _jef_write_jump_split(data, dx, dy)
+            # Count: each split segment = 2 points
+            steps = max(1, max(
+                (abs(dx) + _MAX_STITCH - 1) // _MAX_STITCH if dx != 0 else 1,
+                (abs(dy) + _MAX_STITCH - 1) // _MAX_STITCH if dy != 0 else 1,
+            ))
+            point_count += steps * 2
             last_x = stitch.x
             last_y = stitch.y
             continue
 
         # Normal stitch - split if too long
-        _jef_write_move(data, dx, dy, is_jump=False)
+        _jef_write_stitch_split(data, dx, dy)
+        steps = max(1, max(
+            (abs(dx) + _MAX_STITCH - 1) // _MAX_STITCH if dx != 0 else 1,
+            (abs(dy) + _MAX_STITCH - 1) // _MAX_STITCH if dy != 0 else 1,
+        ))
+        point_count += steps
         last_x = stitch.x
         last_y = stitch.y
 
-    # Final end marker
-    data.extend(struct.pack('<hh', -32768, -32768))
-    return data
+    # End marker (only if no END stitch was encountered)
+    data.extend(b'\x80\x10')
+    return data, point_count
 
 
-def _jef_write_move(data: bytearray, dx: int, dy: int,
-                    is_jump: bool = False):
-    """Write a JEF movement, splitting long moves."""
-    MAX_STEP = 124
+def _jef_write_command(data: bytearray, ctrl: int, dx: int, dy: int):
+    """Write a JEF control command: 0x80 ctrl dx (-dy)."""
+    data.append(0x80)
+    data.append(ctrl & 0xFF)
+    data.append(dx & 0xFF)
+    data.append((-dy) & 0xFF)
 
-    while abs(dx) > MAX_STEP or abs(dy) > MAX_STEP:
-        step_x = max(-MAX_STEP, min(MAX_STEP, dx))
-        step_y = max(-MAX_STEP, min(MAX_STEP, dy))
 
-        if is_jump:
-            sx = step_x if step_x >= 0 else (step_x & 0xFFFF)
-            sy = step_y if step_y >= 0 else (step_y & 0xFFFF)
-            # Set jump flag (bit 15)
-            data.extend(struct.pack('<hh',
-                                    step_x | -32768 if is_jump else step_x,
-                                    step_y | -32768 if is_jump else step_y))
-        else:
-            data.extend(struct.pack('<hh', step_x, step_y))
+def _jef_write_stitch(data: bytearray, dx: int, dy: int):
+    """Write a single normal JEF stitch: dx (-dy) as signed bytes."""
+    data.append(dx & 0xFF)
+    data.append((-dy) & 0xFF)
 
+
+def _jef_write_stitch_split(data: bytearray, dx: int, dy: int):
+    """Write a normal stitch, splitting if exceeding MAX_STITCH."""
+    while abs(dx) > _MAX_STITCH or abs(dy) > _MAX_STITCH:
+        step_x = max(-_MAX_STITCH, min(_MAX_STITCH, dx))
+        step_y = max(-_MAX_STITCH, min(_MAX_STITCH, dy))
+        _jef_write_stitch(data, step_x, step_y)
         dx -= step_x
         dy -= step_y
+    _jef_write_stitch(data, dx, dy)
 
-    if is_jump and (dx != 0 or dy != 0):
-        # For jumps, set high bit
-        jx = dx & 0x7FFF | 0x8000
-        jy = dy & 0x7FFF | 0x8000
-        data.extend(struct.pack('<HH', jx, jy))
-    else:
-        data.extend(struct.pack('<hh', dx, dy))
+
+def _jef_write_jump_split(data: bytearray, dx: int, dy: int):
+    """Write a jump move, splitting if exceeding MAX_STITCH."""
+    while abs(dx) > _MAX_STITCH or abs(dy) > _MAX_STITCH:
+        step_x = max(-_MAX_STITCH, min(_MAX_STITCH, dx))
+        step_y = max(-_MAX_STITCH, min(_MAX_STITCH, dy))
+        _jef_write_command(data, 0x02, step_x, step_y)
+        dx -= step_x
+        dy -= step_y
+    _jef_write_command(data, 0x02, dx, dy)
