@@ -26,8 +26,8 @@ app = typer.Typer(
         "  .jef   JANOME\n\n"
         "使用例:\n"
         "  nuizu photo.jpg design.dst\n"
-        "  nuizu photo.png design.jef --colors 12 --width 150\n"
-        "  nuizu photo.jpg design.pes --auto-angle --pull-comp 0.3\n"
+        "  nuizu photo.png design.jef -c 12 --width 150\n"
+        "  nuizu photo.jpg design.pes --max-colors 10 --auto-angle\n"
         "  nuizu photo.jpg design.dst --palette brother --preview svg"
     ),
 )
@@ -61,7 +61,12 @@ def convert(
         8,
         "--colors",
         "-c",
-        help="使用する糸色数",
+        help="使用する糸色数（厳密に維持）",
+    ),
+    max_colors: int | None = typer.Option(
+        None,
+        "--max-colors",
+        help="最大糸色数（指定数以下に自動調整）",
     ),
     palette: PaletteName = typer.Option(
         "auto",
@@ -137,11 +142,6 @@ def convert(
         "--skip-bg",
         help="背景色のステッチをスキップ",
     ),
-    force_colors: bool = typer.Option(
-        False,
-        "--force-colors",
-        help="指定した色数（-c）を厳密に維持",
-    ),
     preview: PreviewFormat | None = typer.Option(
         None,
         "--preview",
@@ -176,6 +176,15 @@ def convert(
 
     fill_density = density if density is not None else thread_width
 
+    # --max-colors: best-effort (may use fewer colors)
+    # -c/--colors: strict (exact color count)
+    if max_colors is not None:
+        n_colors = max_colors
+        strict = False
+    else:
+        n_colors = colors
+        strict = True
+
     from .pipeline import convert_photo_to_embroidery, generate_preview
     from .svg_preview import generate_svg_preview
 
@@ -185,7 +194,7 @@ def convert(
             output_path=output_path,
             target_width_mm=width,
             target_height_mm=height,
-            n_colors=colors,
+            n_colors=n_colors,
             use_thread_palette=palette != "auto",
             thread_brand=palette,
             fill_density=fill_density,
@@ -201,7 +210,7 @@ def convert(
             min_region_ratio=min_region,
             auto_crop=auto_crop,
             skip_background=skip_bg,
-            strict_colors=force_colors,
+            strict_colors=strict,
             verbose=not quiet,
         )
 
