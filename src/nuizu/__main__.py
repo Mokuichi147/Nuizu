@@ -11,7 +11,7 @@ import typer
 
 
 PaletteName = Literal["auto", "janome", "brother", "madeira", "generic"]
-PreviewFormat = Literal["png", "svg", "both"]
+PreviewFormat = Literal["png", "svg"]
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -19,164 +19,51 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     help=(
         "写真を刺繍用データ（DST / PES / JEF）へ変換します。\n\n"
-        "対応出力形式:\n"
-        "  .dst   Tajima（高い互換性）\n"
-        "  .pes   Brother / Babylock\n"
-        "  .jef   JANOME\n\n"
         "使用例:\n"
-        "  nuizu photo.jpg design.dst\n"
-        "  nuizu photo.png design.jef -c 12 --width 150\n"
-        "  nuizu photo.jpg design.pes --max-colors 10 --auto-angle\n"
-        "  nuizu photo.jpg design.dst --palette brother --preview svg"
+        "  nuizu dst photo.jpg\n"
+        "  nuizu dst photo.jpg -c 12 -W 150\n"
+        "  nuizu jef photo.png output.jef --max-colors 10\n"
+        "  nuizu pes photo.jpg --palette brother --preview png"
     ),
 )
 
 
-@app.command()
-def convert(
-    input_path: str = typer.Argument(
-        ...,
-        metavar="入力画像",
-        help="入力画像ファイル（JPG, PNG など）",
-    ),
-    output_path: str = typer.Argument(
-        ...,
-        metavar="出力ファイル",
-        help="出力刺繍ファイル（.dst, .pes, .jef）",
-    ),
-    width: float = typer.Option(
-        100.0,
-        "--width",
-        "-W",
-        help="刺繍の目標幅（mm）",
-    ),
-    height: float | None = typer.Option(
-        None,
-        "--height",
-        "-H",
-        help="刺繍の目標高さ（mm）。未指定時は自動計算",
-    ),
-    colors: int = typer.Option(
-        8,
-        "--colors",
-        "-c",
-        help="使用する糸色数（厳密に維持）",
-    ),
-    max_colors: int | None = typer.Option(
-        None,
-        "--max-colors",
-        help="最大糸色数（指定数以下に自動調整）",
-    ),
-    palette: PaletteName = typer.Option(
-        "auto",
-        "--palette",
-        help="糸パレット",
-    ),
-    thread_width: float = typer.Option(
-        0.4,
-        "--thread-width",
-        "-t",
-        help="糸幅（mm）",
-    ),
-    density: float | None = typer.Option(
-        None,
-        "--density",
-        "-d",
-        help="フィル行間隔（mm）。未指定時は --thread-width と同値",
-    ),
-    stitch_length: float = typer.Option(
-        3.0,
-        "--stitch-length",
-        "-l",
-        help="最大ステッチ長（mm）",
-    ),
-    angle: float = typer.Option(
-        45.0,
-        "--angle",
-        "-a",
-        help="フィル角度（度）",
-    ),
-    auto_angle: bool = typer.Option(
-        False,
-        "--auto-angle",
-        help="領域ごとにフィル角度を自動最適化",
-    ),
-    no_underlay: bool = typer.Option(
-        False,
-        "--no-underlay",
-        help="アンダーレイ（下縫い）を無効化",
-    ),
-    no_outline: bool = typer.Option(
-        False,
-        "--no-outline",
-        help="アウトライン縫いを無効化",
-    ),
-    satin_outline: bool = typer.Option(
-        False,
-        "--satin-outline",
-        help="アウトラインをサテンステッチ化",
-    ),
-    pull_comp: float = typer.Option(
-        0.0,
-        "--pull-comp",
-        help="プルコンペンセーション（mm）。推奨: 0.2-0.5",
-    ),
-    blur: int = typer.Option(
-        3,
-        "--blur",
-        help="前処理ぼかし半径（0で無効）",
-    ),
-    min_region: float = typer.Option(
-        0.001,
-        "--min-region",
-        help="最小領域比率",
-    ),
-    auto_crop: bool = typer.Option(
-        False,
-        "--auto-crop",
-        help="主被写体を自動検出してクロップ",
-    ),
-    skip_bg: bool = typer.Option(
-        False,
-        "--skip-bg",
-        help="背景色のステッチをスキップ",
-    ),
-    preview: PreviewFormat | None = typer.Option(
-        None,
-        "--preview",
-        help="プレビュー生成形式",
-    ),
-    preview_path: str | None = typer.Option(
-        None,
-        "--preview-path",
-        help="プレビュー出力先のベースパス",
-    ),
-    quiet: bool = typer.Option(
-        False,
-        "--quiet",
-        "-q",
-        help="進行メッセージを抑制",
-    ),
+def _run_convert(
+    input_path: str,
+    output_path: str | None,
+    ext: str,
+    *,
+    width: float,
+    height: float | None,
+    colors: int,
+    max_colors: int | None,
+    palette: str,
+    thread_width: float,
+    density: float | None,
+    stitch_length: float,
+    angle: float,
+    auto_angle: bool,
+    no_underlay: bool,
+    no_outline: bool,
+    satin_outline: bool,
+    pull_comp: float,
+    blur: int,
+    min_region: float,
+    auto_crop: bool,
+    skip_bg: bool,
+    preview: str | None,
+    quiet: bool,
 ) -> None:
-    """写真から刺繍データを生成します。"""
     in_file = Path(input_path)
     if not in_file.exists() or not in_file.is_file():
         typer.echo(f"エラー: 入力ファイルが見つかりません: {input_path}", err=True)
         raise typer.Exit(code=1)
 
-    ext = Path(output_path).suffix.lower()
-    if ext not in (".dst", ".pes", ".jef"):
-        typer.echo(
-            f"エラー: 未対応の出力形式です: {ext or '(拡張子なし)'}",
-            err=True,
-        )
-        typer.echo("対応形式: .dst, .pes, .jef", err=True)
-        raise typer.Exit(code=1)
+    if output_path is None:
+        output_path = str(in_file.with_suffix(ext))
 
     fill_density = density if density is not None else thread_width
 
-    # --max-colors: best-effort (may use fewer colors)
-    # -c/--colors: strict (exact color count)
     if max_colors is not None:
         n_colors = max_colors
         strict = False
@@ -214,10 +101,10 @@ def convert(
         )
 
         if preview:
-            base = preview_path or os.path.splitext(output_path)[0]
+            base = os.path.splitext(output_path)[0]
 
-            if preview in ("png", "both"):
-                thread_path = base if preview_path else f"{base}_preview.png"
+            if preview == "png":
+                thread_path = f"{base}_preview.png"
                 generate_preview(pattern, thread_path, thread_width_mm=thread_width)
                 if not quiet:
                     typer.echo(f"プレビュー（糸幅）: {thread_path}", err=True)
@@ -227,16 +114,8 @@ def convert(
                 if not quiet:
                     typer.echo(f"プレビュー（針落ち）: {stitch_path}", err=True)
 
-            if preview in ("svg", "both"):
-                if preview_path:
-                    custom = Path(base)
-                    svg_thread_path = str(
-                        custom.with_suffix(".svg")
-                        if custom.suffix
-                        else Path(f"{base}.svg")
-                    )
-                else:
-                    svg_thread_path = f"{base}_preview.svg"
+            elif preview == "svg":
+                svg_thread_path = f"{base}_preview.svg"
                 generate_svg_preview(pattern, svg_thread_path, thread_width_mm=thread_width)
                 if not quiet:
                     typer.echo(f"プレビュー（SVG 糸幅）: {svg_thread_path}", err=True)
@@ -250,6 +129,103 @@ def convert(
         typer.echo(f"エラー: {exc}", err=True)
         traceback.print_exc()
         raise typer.Exit(code=1) from exc
+
+
+def _make_command(ext: str, description: str):
+    """サブコマンド生成ファクトリ。"""
+
+    def command(
+        input_path: str = typer.Argument(
+            ...,
+            metavar="入力画像",
+            help="入力画像ファイル（JPG, PNG など）",
+        ),
+        output_path: str | None = typer.Argument(
+            None,
+            metavar="出力ファイル",
+            help=f"出力ファイル（省略時は 入力名{ext}）",
+        ),
+        width: float = typer.Option(
+            100.0, "--width", "-W", help="刺繍の目標幅（mm）",
+        ),
+        height: float | None = typer.Option(
+            None, "--height", "-H", help="刺繍の目標高さ（mm）。未指定時は自動計算",
+        ),
+        colors: int = typer.Option(
+            8, "--colors", "-c", help="使用する糸色数（厳密に維持）",
+        ),
+        max_colors: int | None = typer.Option(
+            None, "--max-colors", help="最大糸色数（指定数以下に自動調整）",
+        ),
+        palette: PaletteName = typer.Option(
+            "auto", "--palette", help="糸パレット",
+        ),
+        thread_width: float = typer.Option(
+            0.4, "--thread-width", "-t", help="糸幅（mm）",
+        ),
+        density: float | None = typer.Option(
+            None, "--density", "-d", help="フィル行間隔（mm）。未指定時は --thread-width と同値",
+        ),
+        stitch_length: float = typer.Option(
+            3.0, "--stitch-length", "-l", help="最大ステッチ長（mm）",
+        ),
+        angle: float = typer.Option(
+            45.0, "--angle", "-a", help="フィル角度（度）",
+        ),
+        auto_angle: bool = typer.Option(
+            False, "--auto-angle", help="領域ごとにフィル角度を自動最適化",
+        ),
+        no_underlay: bool = typer.Option(
+            False, "--no-underlay", help="アンダーレイ（下縫い）を無効化",
+        ),
+        no_outline: bool = typer.Option(
+            False, "--no-outline", help="アウトライン縫いを無効化",
+        ),
+        satin_outline: bool = typer.Option(
+            False, "--satin-outline", help="アウトラインをサテンステッチ化",
+        ),
+        pull_comp: float = typer.Option(
+            0.0, "--pull-comp", help="プルコンペンセーション（mm）。推奨: 0.2-0.5",
+        ),
+        blur: int = typer.Option(
+            3, "--blur", help="前処理ぼかし半径（0で無効）",
+        ),
+        min_region: float = typer.Option(
+            0.001, "--min-region", help="最小領域比率",
+        ),
+        auto_crop: bool = typer.Option(
+            False, "--auto-crop", help="主被写体を自動検出してクロップ",
+        ),
+        skip_bg: bool = typer.Option(
+            False, "--skip-bg", help="背景色のステッチをスキップ",
+        ),
+        preview: PreviewFormat | None = typer.Option(
+            None, "--preview", help="プレビュー生成形式",
+        ),
+        quiet: bool = typer.Option(
+            False, "--quiet", "-q", help="進行メッセージを抑制",
+        ),
+    ) -> None:
+        _run_convert(
+            input_path, output_path, ext,
+            width=width, height=height, colors=colors,
+            max_colors=max_colors, palette=palette,
+            thread_width=thread_width, density=density,
+            stitch_length=stitch_length, angle=angle,
+            auto_angle=auto_angle, no_underlay=no_underlay,
+            no_outline=no_outline, satin_outline=satin_outline,
+            pull_comp=pull_comp, blur=blur, min_region=min_region,
+            auto_crop=auto_crop, skip_bg=skip_bg,
+            preview=preview, quiet=quiet,
+        )
+
+    command.__doc__ = description
+    return command
+
+
+app.command("dst")(_make_command(".dst", "DST形式（Tajima）で出力"))
+app.command("pes")(_make_command(".pes", "PES形式（Brother / Babylock）で出力"))
+app.command("jef")(_make_command(".jef", "JEF形式（JANOME）で出力"))
 
 
 def main() -> None:
