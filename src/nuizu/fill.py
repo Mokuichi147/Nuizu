@@ -23,8 +23,8 @@ def _rasterize_region(contour_mm: np.ndarray,
         (mask, origin_x, origin_y): mask image and its origin in mm.
     """
     all_pts = contour_mm.copy()
-    min_x, min_y = all_pts.min(axis=0) - 1.0
-    max_x, max_y = all_pts.max(axis=0) + 1.0
+    min_x, min_y = all_pts.min(axis=0) - 0.3
+    max_x, max_y = all_pts.max(axis=0) + 0.3
 
     w = int(np.ceil((max_x - min_x) * ppm)) + 2
     h = int(np.ceil((max_y - min_y) * ppm)) + 2
@@ -43,20 +43,6 @@ def _rasterize_region(contour_mm: np.ndarray,
 
     contour_px = to_px(contour_mm)
     cv2.fillPoly(mask, [contour_px], 255)
-    # Draw contour outline to include boundary pixels in fill
-    cv2.polylines(mask, [contour_px], True, 255, 1)
-    for hole in holes_mm:
-        cv2.fillPoly(mask, [to_px(hole)], 0)
-
-    # Dilation so fill extends well under outline stitches.
-    # ~0.3mm ensures fill covers the region edge even after
-    # outline stitch offset.
-    dilate_r = max(2, round(0.3 * ppm))
-    dilate_size = dilate_r * 2 + 1
-    dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                          (dilate_size, dilate_size))
-    mask = cv2.dilate(mask, dilate_k, iterations=1)
-    # Re-cut holes after dilation
     for hole in holes_mm:
         cv2.fillPoly(mask, [to_px(hole)], 0)
 
