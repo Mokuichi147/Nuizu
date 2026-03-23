@@ -110,7 +110,7 @@ def _make_dst_header(pattern: EmbroideryPattern) -> bytes:
 
     def _write_field(offset: int, text: str, field_len: int):
         """Write a fixed-length field into the header."""
-        encoded = text.encode('ascii')[:field_len]
+        encoded = text.encode('ascii', errors='replace')[:field_len]
         for i, b in enumerate(encoded):
             header[offset + i] = b
 

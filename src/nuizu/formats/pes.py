@@ -205,7 +205,7 @@ def _write_pec_section(f, pattern: EmbroideryPattern,
     """Write the PEC section of a PES file."""
     # PEC label
     label = pattern.name[:16].ljust(16)
-    f.write(f"LA:{label}\r".encode('ascii')[:20])
+    f.write(f"LA:{label}\r".encode('ascii', errors='replace')[:20])
 
     # Padding
     f.write(bytes(11))
