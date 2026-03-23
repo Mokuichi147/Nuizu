@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 import typer
+from click.core import ParameterSource
 
 
 PaletteName = Literal["auto", "janome", "brother", "madeira", "generic"]
@@ -36,6 +37,7 @@ def _run_convert(
     width: float,
     height: float | None,
     colors: int,
+    colors_specified: bool,
     max_colors: int | None,
     palette: str,
     thread_width: float,
@@ -67,9 +69,12 @@ def _run_convert(
     if max_colors is not None:
         n_colors = max_colors
         strict = False
-    else:
+    elif colors_specified:
         n_colors = colors
         strict = True
+    else:
+        n_colors = colors
+        strict = False
 
     from .pipeline import convert_photo_to_embroidery, generate_preview
     from .svg_preview import generate_svg_preview
@@ -135,6 +140,7 @@ def _make_command(ext: str, description: str):
     """サブコマンド生成ファクトリ。"""
 
     def command(
+        ctx: typer.Context,
         input_path: str = typer.Argument(
             ...,
             metavar="入力画像",
@@ -206,9 +212,13 @@ def _make_command(ext: str, description: str):
             False, "--quiet", "-q", help="進行メッセージを抑制",
         ),
     ) -> None:
+        colors_specified = (
+            ctx.get_parameter_source("colors") != ParameterSource.DEFAULT
+        )
         _run_convert(
             input_path, output_path, ext,
             width=width, height=height, colors=colors,
+            colors_specified=colors_specified,
             max_colors=max_colors, palette=palette,
             thread_width=thread_width, density=density,
             stitch_length=stitch_length, angle=angle,
