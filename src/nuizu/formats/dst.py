@@ -8,103 +8,19 @@ File structure:
   - Stitch data (3 bytes per command)
 """
 
-import struct
-from typing import BinaryIO
 from .common import EmbroideryPattern, StitchType
 
+MAX_STEP = 121
+END_CMD = bytes([0x00, 0x00, 0xF3])
+COLOR_CHANGE_CMD = bytes([0x00, 0x00, 0xC3])
 
-# DST coordinate encoding lookup table
-def _encode_dst_coord(dx: int, dy: int, flags: int = 0) -> bytes:
-    """Encode a single DST stitch command (3 bytes).
-
-    DST uses a complex bit-packing scheme for coordinates.
-    dx, dy are in 0.1mm units, range approximately -121 to +121.
-    """
-    b0 = 0
-    b1 = 0
-    b2 = flags & 0xFF
-
-    # Y encoding (positive = up)
-    if dy > 0:
-        if dy & 1:
-            b2 |= 0x01
-        if dy & 2:
-            b2 |= 0x02
-        if dy & 4:
-            b1 |= 0x04
-        if dy & 8:
-            b1 |= 0x10
-        if dy & 16:
-            b0 |= 0x04
-        if dy & 32:
-            b0 |= 0x10
-        if dy & 64:
-            b0 |= 0x40
-    elif dy < 0:
-        dy = -dy
-        if dy & 1:
-            b2 |= 0x01
-        if dy & 2:
-            b2 |= 0x02
-        if dy & 4:
-            b1 |= 0x04
-        if dy & 8:
-            b1 |= 0x10
-        if dy & 16:
-            b0 |= 0x04
-        if dy & 32:
-            b0 |= 0x10
-        if dy & 64:
-            b0 |= 0x40
-        # Set negative Y bits
-        b2 |= 0x04
-        b1 |= 0x08
-        b0 |= 0x08
-
-    # X encoding (positive = right)
-    if dx > 0:
-        if dx & 1:
-            b1 |= 0x01
-        if dx & 2:
-            b1 |= 0x02
-        if dx & 4:
-            b2 |= 0x10
-        if dx & 8:
-            b2 |= 0x40
-        if dx & 16:
-            b0 |= 0x01
-        if dx & 32:
-            b0 |= 0x02
-        if dx & 64:
-            b0 |= 0x20
-    elif dx < 0:
-        dx = -dx
-        if dx & 1:
-            b1 |= 0x01
-        if dx & 2:
-            b1 |= 0x02
-        if dx & 4:
-            b2 |= 0x10
-        if dx & 8:
-            b2 |= 0x40
-        if dx & 16:
-            b0 |= 0x01
-        if dx & 32:
-            b0 |= 0x02
-        if dx & 64:
-            b0 |= 0x20
-        # Set negative X bits
-        b1 |= 0x20
-        b1 |= 0x40
-        b0 |= 0x80
-
-    # Normal stitch has bit 0x80 set in byte 2
-    b2 |= 0x03  # Set two LSBs of b2 as required by DST
-
-    return bytes([b0, b1, b2])
-
-
-def _make_dst_header(pattern: EmbroideryPattern) -> bytes:
+def _make_dst_header(
+    pattern: EmbroideryPattern,
+    stitch_records: int,
+    color_changes: int,
+    bounds_units: tuple[int, int, int, int],
+    end_pos_units: tuple[int, int],
+) -> bytes:
     """Create 512-byte DST header."""
     header = bytearray(b'\x20' * 512)
 
@@ -118,45 +34,47 @@ def _make_dst_header(pattern: EmbroideryPattern) -> bytes:
     label = pattern.name[:16].ljust(16)
     _write_field(0, f"LA:{label}\r", 20)
 
-    # Stitch count (11 bytes)
-    sc = pattern.stitch_count()
-    _write_field(20, f"ST:{sc:07d}\r", 11)
+    # Record count (11 bytes)
+    _write_field(20, f"ST:{stitch_records:7d}\r", 11)
 
-    # Color count (7 bytes)
-    cc = len(pattern.colors)
-    _write_field(31, f"CO:{cc:03d}\r", 7)
+    # Color change count (7 bytes)
+    _write_field(31, f"CO:{color_changes:3d}\r", 7)
 
-    # Bounds (9 bytes each)
-    bounds = pattern.get_bounds()
-    max_x_units = int(abs(bounds[2]) * 10)
-    min_x_units = int(abs(bounds[0]) * 10)
-    max_y_units = int(abs(bounds[3]) * 10)
-    min_y_units = int(abs(bounds[1]) * 10)
+    # Bounds (9 bytes each), units: 0.1mm
+    min_x, max_x, min_y, max_y = bounds_units
 
     pos = 38
     for tag, val in [
-        ("+X", max_x_units),
-        ("-X", min_x_units),
-        ("+Y", max_y_units),
-        ("-Y", min_y_units),
+        ("+X", abs(max_x)),
+        ("-X", abs(min_x)),
+        ("+Y", abs(max_y)),
+        ("-Y", abs(min_y)),
     ]:
-        _write_field(pos, f"{tag}:{val:05d}\r", 9)
+        _write_field(pos, f"{tag}:{val:5d}\r", 9)
         pos += 9
 
-    # AX, AY
-    _write_field(pos, f"AX:+{0:05d}\r", 10); pos += 10
-    _write_field(pos, f"AY:+{0:05d}\r", 10); pos += 10
+    # AX, AY (final needle position in file coordinate convention)
+    ax, ay = end_pos_units[0], -end_pos_units[1]
+    ax_sign = "+" if ax >= 0 else "-"
+    ay_sign = "+" if ay >= 0 else "-"
+    _write_field(pos, f"AX:{ax_sign}{abs(ax):5d}\r", 10)
+    pos += 10
+    _write_field(pos, f"AY:{ay_sign}{abs(ay):5d}\r", 10)
+    pos += 10
 
     # MX, MY
-    _write_field(pos, f"MX:+{0:05d}\r", 10); pos += 10
-    _write_field(pos, f"MY:+{0:05d}\r", 10); pos += 10
+    _write_field(pos, f"MX:+{0:5d}\r", 10)
+    pos += 10
+    _write_field(pos, f"MY:+{0:5d}\r", 10)
+    pos += 10
 
     # PD
-    _write_field(pos, "PD:******\r", 10); pos += 10
+    _write_field(pos, "PD:******\r", 10)
+    pos += 10
 
-    # End-of-header marker
-    header[510] = 0x1A
-    header[511] = 0x00
+    # Header end marker. Remaining bytes stay as spaces.
+    if pos < 512:
+        header[pos] = 0x1A
 
     return bytes(header)
 
@@ -170,124 +88,170 @@ def write_dst(pattern: EmbroideryPattern, filepath: str):
     """
     pattern.center_pattern()
 
+    stitch_stream, color_changes, bounds_units, end_pos_units = (
+        _build_dst_stitch_stream(pattern)
+    )
+    header = _make_dst_header(
+        pattern=pattern,
+        stitch_records=len(stitch_stream) // 3,
+        color_changes=color_changes,
+        bounds_units=bounds_units,
+        end_pos_units=end_pos_units,
+    )
+
     with open(filepath, 'wb') as f:
-        # Write header
-        f.write(_make_dst_header(pattern))
-
-        # Convert stitches to relative movements
-        last_x = 0.0
-        last_y = 0.0
-
-        for stitch in pattern.stitches:
-            if stitch.stitch_type == StitchType.END:
-                # End command
-                f.write(bytes([0x00, 0x00, 0xF3]))
-                break
-
-            # Convert mm to 0.1mm units
-            x_units = stitch.x * 10
-            y_units = stitch.y * 10
-
-            dx = int(round(x_units - last_x * 10))
-            dy = int(round(y_units - last_y * 10))
-
-            if stitch.stitch_type == StitchType.COLOR_CHANGE:
-                # Color change: stop command
-                _write_dst_move(f, dx, dy, is_jump=True)
-                f.write(bytes([0x00, 0x00, 0xC3]))  # Color change
-                last_x = stitch.x
-                last_y = stitch.y
-                continue
-
-            if stitch.stitch_type == StitchType.TRIM:
-                _write_dst_move(f, dx, dy, is_jump=True)
-                last_x = stitch.x
-                last_y = stitch.y
-                continue
-
-            is_jump = stitch.stitch_type == StitchType.JUMP
-
-            # DST max step is about 121 units (12.1mm)
-            _write_dst_move(f, dx, dy, is_jump=is_jump)
-
-            last_x = stitch.x
-            last_y = stitch.y
-
-        # End of file
-        f.write(bytes([0x00, 0x00, 0xF3]))
+        f.write(header)
+        f.write(stitch_stream)
 
 
-def _write_dst_move(f: BinaryIO, dx: int, dy: int,
-                    is_jump: bool = False):
+def _build_dst_stitch_stream(
+    pattern: EmbroideryPattern,
+) -> tuple[bytearray, int, tuple[int, int, int, int], tuple[int, int]]:
+    """Build DST command stream and metadata stats."""
+    stream = bytearray()
+    color_changes = 0
+
+    # Track integer positions in 0.1mm to prevent cumulative float drift.
+    current_x = 0
+    current_y = 0
+    min_x = max_x = 0
+    min_y = max_y = 0
+    has_end = False
+
+    for stitch in pattern.stitches:
+        if stitch.stitch_type == StitchType.END:
+            stream.extend(END_CMD)
+            has_end = True
+            break
+
+        target_x = int(round(stitch.x * 10))
+        target_y = int(round(stitch.y * 10))
+        dx = target_x - current_x
+        dy = target_y - current_y
+
+        if stitch.stitch_type == StitchType.COLOR_CHANGE:
+            _append_dst_move(stream, dx, dy, is_jump=True)
+            stream.extend(COLOR_CHANGE_CMD)
+            color_changes += 1
+        elif stitch.stitch_type == StitchType.TRIM:
+            _append_dst_move(stream, dx, dy, is_jump=True)
+        else:
+            _append_dst_move(
+                stream,
+                dx,
+                dy,
+                is_jump=(stitch.stitch_type == StitchType.JUMP),
+            )
+
+        current_x = target_x
+        current_y = target_y
+        min_x = min(min_x, current_x)
+        max_x = max(max_x, current_x)
+        min_y = min(min_y, current_y)
+        max_y = max(max_y, current_y)
+
+    if not has_end:
+        stream.extend(END_CMD)
+
+    return (
+        stream,
+        color_changes,
+        (min_x, max_x, min_y, max_y),
+        (current_x, current_y),
+    )
+
+
+def _append_dst_move(
+    stream: bytearray, dx: int, dy: int, is_jump: bool = False
+) -> None:
     """Write a DST movement, splitting if necessary."""
-    MAX_STEP = 121
-
     while abs(dx) > MAX_STEP or abs(dy) > MAX_STEP:
         step_x = max(-MAX_STEP, min(MAX_STEP, dx))
         step_y = max(-MAX_STEP, min(MAX_STEP, dy))
 
-        flags = 0x80 if is_jump else 0x00
-        data = _encode_dst_byte(step_x, step_y, is_jump)
-        f.write(data)
+        stream.extend(_encode_dst_byte(step_x, step_y, is_jump))
 
         dx -= step_x
         dy -= step_y
 
-    data = _encode_dst_byte(dx, dy, is_jump)
-    f.write(data)
+    stream.extend(_encode_dst_byte(dx, dy, is_jump))
 
 
 def _encode_dst_byte(dx: int, dy: int, is_jump: bool = False) -> bytes:
-    """Encode a single DST stitch using the standard bit-packing."""
+    """Encode one DST move command (0.1mm units)."""
+    # DST stores Y with opposite sign from common Cartesian interpretation.
+    y = -dy
+    x = dx
     b0 = 0
     b1 = 0
-    b2 = 0x03  # Two LSBs always set
+    b2 = 0x03
 
-    # Encode Y axis
-    ay = abs(dy)
-    if ay & 1:
-        b2 |= 0x01  # Already set by 0x03
-    if ay & 2:
-        b2 |= 0x02  # Already set by 0x03
-    if ay & 4:
-        b1 |= 0x04
-    if ay & 8:
-        b1 |= 0x10
-    if ay & 16:
-        b0 |= 0x04
-    if ay & 32:
-        b0 |= 0x10
-    if ay & 64:
-        b0 |= 0x40
+    if x > 40:
+        b2 |= 1 << 2
+        x -= 81
+    if x < -40:
+        b2 |= 1 << 3
+        x += 81
+    if x > 13:
+        b1 |= 1 << 2
+        x -= 27
+    if x < -13:
+        b1 |= 1 << 3
+        x += 27
+    if x > 4:
+        b0 |= 1 << 2
+        x -= 9
+    if x < -4:
+        b0 |= 1 << 3
+        x += 9
+    if x > 1:
+        b1 |= 1 << 0
+        x -= 3
+    if x < -1:
+        b1 |= 1 << 1
+        x += 3
+    if x > 0:
+        b0 |= 1 << 0
+        x -= 1
+    if x < 0:
+        b0 |= 1 << 1
+        x += 1
 
-    if dy < 0:
-        b2 |= 0x04
-        b1 |= 0x08
-        b0 |= 0x08
+    if y > 40:
+        b2 |= 1 << 5
+        y -= 81
+    if y < -40:
+        b2 |= 1 << 4
+        y += 81
+    if y > 13:
+        b1 |= 1 << 5
+        y -= 27
+    if y < -13:
+        b1 |= 1 << 4
+        y += 27
+    if y > 4:
+        b0 |= 1 << 5
+        y -= 9
+    if y < -4:
+        b0 |= 1 << 4
+        y += 9
+    if y > 1:
+        b1 |= 1 << 7
+        y -= 3
+    if y < -1:
+        b1 |= 1 << 6
+        y += 3
+    if y > 0:
+        b0 |= 1 << 7
+        y -= 1
+    if y < 0:
+        b0 |= 1 << 6
+        y += 1
 
-    # Encode X axis
-    ax = abs(dx)
-    if ax & 1:
-        b1 |= 0x01
-    if ax & 2:
-        b1 |= 0x02
-    if ax & 4:
-        b2 |= 0x10
-    if ax & 8:
-        b2 |= 0x40
-    if ax & 16:
-        b0 |= 0x01
-    if ax & 32:
-        b0 |= 0x02
-    if ax & 64:
-        b0 |= 0x20
-
-    if dx < 0:
-        b1 |= 0x20
-        b1 |= 0x40
-        b0 |= 0x80
+    if x != 0 or y != 0:
+        raise ValueError(f"DST move out of range: dx={dx}, dy={dy}")
 
     if is_jump:
-        b2 |= 0x80  # Jump flag
+        b2 |= 1 << 7
 
     return bytes([b0, b1, b2])
