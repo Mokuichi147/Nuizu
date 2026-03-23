@@ -23,18 +23,27 @@ uv sync
 ## クイックスタート
 
 ```bash
-# 基本変換（JANOME JEF形式）
-uv run nuizu photo.jpg output.jef
+# 基本変換（JEF形式、出力パス省略）
+uv run nuizu jef photo.jpg
 
 # 12色、幅150mmで変換 + プレビュー生成
-uv run nuizu photo.png design.jef --colors 12 --width 150 --preview both
+uv run nuizu jef photo.png design.jef --colors 12 --width 150 --preview png
 
-# フル機能（自動角度、プルコンペンセーション、背景スキップ）
-uv run nuizu photo.jpg design.dst \
+# フル機能（最大色数指定、自動角度、プルコンペンセーション、背景スキップ）
+uv run nuizu dst photo.jpg design.dst \
+  --max-colors 10 \
   --auto-angle --pull-comp 0.3 --skip-bg --preview svg
 ```
 
-## 全オプション一覧
+基本構文:
+
+```bash
+uv run nuizu <dst|pes|jef> 入力画像 [出力ファイル]
+```
+
+- `出力ファイル`を省略すると、入力画像と同名で拡張子だけが各形式に変わります（例: `photo.jpg` → `photo.dst`）。
+
+## 全オプション一覧（`dst` / `pes` / `jef` 共通）
 
 ### サイズ
 
@@ -47,9 +56,9 @@ uv run nuizu photo.jpg design.dst \
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `-c, --colors` | 8 | 糸の色数 |
+| `-c, --colors` | 8 | 使用する糸色数（厳密に維持） |
+| `--max-colors` | - | 最大糸色数（指定数以下に自動調整） |
 | `--palette` | auto | 糸パレット (`auto`, `janome`, `brother`, `madeira`, `generic`) |
-| `--force-colors` | - | 指定した色数を厳密に維持 |
 
 ### ステッチ
 
@@ -78,8 +87,7 @@ uv run nuizu photo.jpg design.dst \
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `--preview` | - | プレビュー生成 (`png`, `svg`, `both`) |
-| `--preview-path` | - | プレビューファイルのカスタムパス |
+| `--preview` | - | プレビュー生成 (`png`, `svg`) |
 | `-q, --quiet` | - | 進行状況メッセージを抑制 |
 
 ## 処理パイプライン
@@ -155,30 +163,30 @@ src/nuizu/
 ### 写真をJANOMEで刺繍する
 
 ```bash
-uv run nuizu portrait.jpg portrait.jef \
+uv run nuizu jef portrait.jpg portrait.jef \
   --palette janome --colors 8 --width 100 \
-  --auto-angle --pull-comp 0.3 --preview both
+  --auto-angle --pull-comp 0.3 --preview svg
 ```
 
 ### 背景なしで被写体だけを刺繍
 
 ```bash
-uv run nuizu flower.jpg flower.dst \
+uv run nuizu dst flower.jpg flower.dst \
   --skip-bg --auto-crop --colors 6 --preview png
 ```
 
 ### 密度の高い高品質仕上げ
 
 ```bash
-uv run nuizu logo.png logo.pes \
+uv run nuizu pes logo.png logo.pes \
   --density 0.25 --stitch-length 2.5 --satin-outline \
-  --pull-comp 0.4 --colors 10
+  --pull-comp 0.4 --max-colors 10
 ```
 
 ### シンプルな変換
 
 ```bash
-uv run nuizu photo.jpg quick.dst \
+uv run nuizu dst photo.jpg \
   --no-underlay --no-outline --colors 4
 ```
 
