@@ -6,6 +6,7 @@ authors = [{ name = "mokuichi147" }]
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 requires-python = ">=3.12.10"
+urls = { Homepage = "https://github.com/Mokuichi147/Nuizu", Repository = "https://github.com/Mokuichi147/Nuizu" }
 dependencies = [
     "numpy",
     "opencv-python",
