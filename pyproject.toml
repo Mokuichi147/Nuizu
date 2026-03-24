@@ -2,6 +2,7 @@
 name = "nuizu"
 version = "0.1.0"
 description = "Convert photos to embroidery data files (DST / PES / JEF)"
+authors = [{ name = "mokuichi147" }]
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 requires-python = ">=3.12.10"
