@@ -26,13 +26,13 @@ uv sync
 # 基本変換（JEF形式、出力パス省略）
 uv run nuizu jef photo.jpg
 
-# 12色、幅150mmで変換 + プレビュー生成
-uv run nuizu jef photo.png design.jef --colors 12 --width 150 --preview png
+# 12色、幅150mmで変換（プレビューはSVG形式に変更）
+uv run nuizu jef photo.png design.jef --colors 12 --width 150 --preview svg
 
-# フル機能（最大色数指定、自動角度、プルコンペンセーション、背景スキップ）
+# フル機能（最大色数指定、自動角度、プルコンペンセーション、背景あり）
 uv run nuizu dst photo.jpg design.dst \
   --max-colors 10 \
-  --auto-angle --pull-comp 0.3 --skip-bg --preview svg
+  --auto-angle --pull-comp 0.3 -b
 ```
 
 基本構文:
@@ -83,13 +83,13 @@ uv run nuizu <dst|pes|jef> 入力画像 [出力ファイル]
 | `--blur` | 3 | ぼかし半径（0=無効） |
 | `--min-region` | 0.001 | 最小領域サイズ（画像全体に対する比率） |
 | `--auto-crop` | - | 被写体を自動検出してクロップ |
-| `--skip-bg` | - | 背景色を自動検出してステッチをスキップ |
+| `-b, --background` | - | 背景色もステッチに含める（デフォルトはスキップ） |
 
 ### 出力
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `--preview` | - | プレビュー生成 (`png`, `svg`) |
+| `--preview` | png | プレビュー生成 (`png`, `svg`, `none`) |
 | `-q, --quiet` | - | 進行状況メッセージを抑制 |
 
 ## 処理パイプライン
@@ -167,14 +167,14 @@ src/nuizu/
 ```bash
 uv run nuizu jef portrait.jpg portrait.jef \
   --palette janome --colors 8 --width 100 \
-  --auto-angle --pull-comp 0.3 --preview svg
+  --auto-angle --pull-comp 0.3
 ```
 
-### 背景なしで被写体だけを刺繍
+### 被写体を自動クロップして刺繍
 
 ```bash
 uv run nuizu dst flower.jpg flower.dst \
-  --skip-bg --auto-crop --colors 6 --preview png
+  --auto-crop --colors 6
 ```
 
 ### 密度の高い高品質仕上げ

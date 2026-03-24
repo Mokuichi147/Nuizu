@@ -12,7 +12,7 @@ from click.core import ParameterSource
 
 
 PaletteName = Literal["auto", "janome", "brother", "madeira", "generic"]
-PreviewFormat = Literal["png", "svg"]
+PreviewFormat = Literal["png", "svg", "none"]
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -24,7 +24,7 @@ app = typer.Typer(
         "  nuizu dst photo.jpg\n"
         "  nuizu dst photo.jpg -c 12 -W 150\n"
         "  nuizu jef photo.png output.jef --max-colors 10\n"
-        "  nuizu pes photo.jpg --palette brother --preview png"
+        "  nuizu pes photo.jpg --palette brother -b"
     ),
 )
 
@@ -202,11 +202,11 @@ def _make_command(ext: str, description: str):
         auto_crop: bool = typer.Option(
             False, "--auto-crop", help="主被写体を自動検出してクロップ",
         ),
-        skip_bg: bool = typer.Option(
-            False, "--skip-bg", help="背景色のステッチをスキップ",
+        background: bool = typer.Option(
+            False, "--background", "-b", help="背景色もステッチに含める",
         ),
-        preview: PreviewFormat | None = typer.Option(
-            None, "--preview", help="プレビュー生成形式",
+        preview: PreviewFormat = typer.Option(
+            "png", "--preview", help="プレビュー生成形式",
         ),
         quiet: bool = typer.Option(
             False, "--quiet", "-q", help="進行メッセージを抑制",
@@ -225,8 +225,8 @@ def _make_command(ext: str, description: str):
             auto_angle=auto_angle, no_underlay=no_underlay,
             no_outline=no_outline, satin_outline=satin_outline,
             pull_comp=pull_comp, blur=blur, min_region=min_region,
-            auto_crop=auto_crop, skip_bg=skip_bg,
-            preview=preview, quiet=quiet,
+            auto_crop=auto_crop, skip_bg=not background,
+            preview=preview if preview != "none" else None, quiet=quiet,
         )
 
     command.__doc__ = description
