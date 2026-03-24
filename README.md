@@ -56,8 +56,8 @@ uv run nuizu <dst|pes|jef> 入力画像 [出力ファイル]
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
 | `-c, --colors` | - | 使用する糸色数（厳密に維持） |
-| `--max-colors` | 8 | 最大糸色数（指定数以下に自動調整） |
-| `--palette` | auto | 糸パレット (`auto`, `janome`, `brother`, `madeira`, `generic`) |
+| `-m, --max-colors` | 8 | 最大糸色数（指定数以下に自動調整） |
+| `-p, --palette` | auto | 糸パレット (`auto`, `janome`, `brother`, `madeira`, `generic`) |
 
 ### ステッチ
 

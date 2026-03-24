@@ -150,10 +150,10 @@ def _make_command(ext: str, description: str):
             None, "--colors", "-c", help="使用する糸色数（厳密に維持）",
         ),
         max_colors: int = typer.Option(
-            8, "--max-colors", help="最大糸色数（指定数以下に自動調整）",
+            8, "--max-colors", "-m", help="最大糸色数（指定数以下に自動調整）",
         ),
         palette: PaletteName = typer.Option(
-            "auto", "--palette", help="糸パレット",
+            "auto", "--palette", "-p", help="糸パレット",
         ),
         thread_width: float = typer.Option(
             0.4, "--thread-width", "-t", help="糸幅（mm）",
