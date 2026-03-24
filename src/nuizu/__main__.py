@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Literal
 
 import typer
-from click.core import ParameterSource
 
 
 PaletteName = Literal["auto", "janome", "brother", "madeira", "generic"]
@@ -36,9 +35,8 @@ def _run_convert(
     *,
     width: float,
     height: float | None,
-    colors: int,
-    colors_specified: bool,
-    max_colors: int | None,
+    colors: int | None,
+    max_colors: int,
     palette: str,
     thread_width: float,
     density: float | None,
@@ -66,14 +64,11 @@ def _run_convert(
 
     fill_density = density if density is not None else thread_width
 
-    if max_colors is not None:
-        n_colors = max_colors
-        strict = False
-    elif colors_specified:
+    if colors is not None:
         n_colors = colors
         strict = True
     else:
-        n_colors = colors
+        n_colors = max_colors
         strict = False
 
     from .pipeline import convert_photo_to_embroidery, generate_preview
@@ -140,7 +135,6 @@ def _make_command(ext: str, description: str):
     """サブコマンド生成ファクトリ。"""
 
     def command(
-        ctx: typer.Context,
         input_path: str = typer.Argument(
             ...,
             metavar="入力画像",
@@ -157,11 +151,11 @@ def _make_command(ext: str, description: str):
         height: float | None = typer.Option(
             None, "--height", "-H", help="刺繍の目標高さ（mm）。未指定時は自動計算",
         ),
-        colors: int = typer.Option(
-            8, "--colors", "-c", help="使用する糸色数（厳密に維持）",
+        colors: int | None = typer.Option(
+            None, "--colors", "-c", help="使用する糸色数（厳密に維持）",
         ),
-        max_colors: int | None = typer.Option(
-            None, "--max-colors", help="最大糸色数（指定数以下に自動調整）",
+        max_colors: int = typer.Option(
+            8, "--max-colors", help="最大糸色数（指定数以下に自動調整）",
         ),
         palette: PaletteName = typer.Option(
             "auto", "--palette", help="糸パレット",
@@ -212,13 +206,9 @@ def _make_command(ext: str, description: str):
             False, "--quiet", "-q", help="進行メッセージを抑制",
         ),
     ) -> None:
-        colors_specified = (
-            ctx.get_parameter_source("colors") != ParameterSource.DEFAULT
-        )
         _run_convert(
             input_path, output_path, ext,
             width=width, height=height, colors=colors,
-            colors_specified=colors_specified,
             max_colors=max_colors, palette=palette,
             thread_width=thread_width, density=density,
             stitch_length=stitch_length, angle=angle,
