@@ -21,7 +21,7 @@ app = typer.Typer(
         "写真を刺繍用データ（DST / PES / JEF）へ変換します。\n\n"
         "使用例:\n"
         "  nuizu dst photo.jpg\n"
-        "  nuizu dst photo.jpg -c 12 -W 150\n"
+        "  nuizu dst photo.jpg -c 12 -s 150\n"
         "  nuizu jef photo.png output.jef --max-colors 10\n"
         "  nuizu pes photo.jpg --palette brother -b"
     ),
@@ -33,8 +33,7 @@ def _run_convert(
     output_path: str | None,
     ext: str,
     *,
-    width: float,
-    height: float | None,
+    size: float,
     colors: int | None,
     max_colors: int,
     palette: str,
@@ -78,8 +77,7 @@ def _run_convert(
         pattern = convert_photo_to_embroidery(
             image_path=input_path,
             output_path=output_path,
-            target_width_mm=width,
-            target_height_mm=height,
+            target_size_mm=size,
             n_colors=n_colors,
             use_thread_palette=palette != "auto",
             thread_brand=palette,
@@ -145,11 +143,8 @@ def _make_command(ext: str, description: str):
             metavar="出力ファイル",
             help=f"出力ファイル（省略時は 入力名{ext}）",
         ),
-        width: float = typer.Option(
-            100.0, "--width", "-W", help="刺繍の目標幅（mm）",
-        ),
-        height: float | None = typer.Option(
-            None, "--height", "-H", help="刺繍の目標高さ（mm）。未指定時は自動計算",
+        size: float = typer.Option(
+            100.0, "--size", "-s", help="最長辺の目標サイズ（mm）",
         ),
         colors: int | None = typer.Option(
             None, "--colors", "-c", help="使用する糸色数（厳密に維持）",
@@ -208,7 +203,7 @@ def _make_command(ext: str, description: str):
     ) -> None:
         _run_convert(
             input_path, output_path, ext,
-            width=width, height=height, colors=colors,
+            size=size, colors=colors,
             max_colors=max_colors, palette=palette,
             thread_width=thread_width, density=density,
             stitch_length=stitch_length, angle=angle,

@@ -26,8 +26,8 @@ uv sync
 # 基本変換（JEF形式、出力パス省略）
 uv run nuizu jef photo.jpg
 
-# 12色、幅150mmで変換（プレビューはSVG形式に変更）
-uv run nuizu jef photo.png design.jef --colors 12 --width 150 --preview svg
+# 12色、最長辺150mmで変換（プレビューはSVG形式に変更）
+uv run nuizu jef photo.png design.jef --colors 12 --size 150 --preview svg
 
 # フル機能（最大色数指定、自動角度、プルコンペンセーション、背景あり）
 uv run nuizu dst photo.jpg design.dst \
@@ -49,8 +49,7 @@ uv run nuizu <dst|pes|jef> 入力画像 [出力ファイル]
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `-W, --width` | 100 | 刺繍幅 (mm) |
-| `-H, --height` | 自動 | 刺繍高さ (mm)。未指定時はアスペクト比を維持 |
+| `-s, --size` | 100 | 最長辺の目標サイズ (mm) |
 
 ### カラー
 
@@ -164,7 +163,7 @@ src/nuizu/
 
 ```bash
 uv run nuizu jef portrait.jpg portrait.jef \
-  --palette janome --colors 8 --width 100 \
+  --palette janome --colors 8 --size 100 \
   --auto-angle --pull-comp 0.3
 ```
 

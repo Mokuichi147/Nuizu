@@ -41,8 +41,7 @@ def convert_photo_to_embroidery(
     image_path: str,
     output_path: str,
     # Size
-    target_width_mm: float = 100.0,
-    target_height_mm: Optional[float] = None,
+    target_size_mm: float = 100.0,
     # Colors
     n_colors: int = 8,
     use_thread_palette: bool = True,
@@ -73,8 +72,7 @@ def convert_photo_to_embroidery(
     Args:
         image_path: Path to input image.
         output_path: Path to output embroidery file (.dst, .pes, .jef).
-        target_width_mm: Target embroidery width in mm.
-        target_height_mm: Target height (auto if None).
+        target_size_mm: Target size for the longest side in mm.
         n_colors: Number of thread colors.
         use_thread_palette: Snap to real thread colors.
         thread_brand: Thread brand for palette ('janome', 'brother', 'madeira').
@@ -145,9 +143,13 @@ def convert_photo_to_embroidery(
     else:
         pass  # No background skipping unless explicitly requested
 
-    # Calculate dimensions
-    if target_height_mm is None:
-        target_height_mm = target_width_mm * (h / w)
+    # Calculate dimensions from longest side
+    if w >= h:
+        target_width_mm = target_size_mm
+        target_height_mm = target_size_mm * (h / w)
+    else:
+        target_height_mm = target_size_mm
+        target_width_mm = target_size_mm * (w / h)
     log(f"  Target: {target_width_mm:.0f}x{target_height_mm:.0f}mm")
 
     # 2. Enhanced preprocessing
