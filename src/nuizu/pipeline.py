@@ -47,7 +47,7 @@ def convert_photo_to_embroidery(
     use_thread_palette: bool = True,
     thread_brand: str = "janome",
     # Stitch parameters
-    fill_density: float = 0.4,
+    fill_density: float = 0.136,
     stitch_length: float = 3.0,
     fill_angle: float = 45.0,
     auto_angle: bool = False,
@@ -55,7 +55,7 @@ def convert_photo_to_embroidery(
     outline: bool = True,
     outline_satin: bool = False,
     # Thread
-    thread_width: float = 0.4,
+    thread_width: float = 0.136,
     # Compensation
     pull_compensation: float = 0.0,
     # Processing
@@ -470,9 +470,9 @@ def convert_photo_to_embroidery(
 
 def generate_preview(pattern: EmbroideryPattern,
                      output_path: str,
-                     width: int = 800,
+                     width: int = 4000,
                      bg_color: Tuple[int, int, int] = (240, 235, 220),
-                     thread_width_mm: float = 0.4):
+                     thread_width_mm: float = 0.136):
     """Generate a raster preview image of the embroidery pattern.
 
     Args:
@@ -481,7 +481,7 @@ def generate_preview(pattern: EmbroideryPattern,
         width: Canvas width in pixels.
         bg_color: Background color.
         thread_width_mm: Thread width in mm for line thickness.
-            Use 0.4 for realistic thread preview, 0 for 1px stitch lines.
+            Use 0 for 1px stitch lines.
     """
     bounds = pattern.get_bounds()
     pat_w = bounds[2] - bounds[0]
@@ -490,8 +490,12 @@ def generate_preview(pattern: EmbroideryPattern,
     if pat_w <= 0 or pat_h <= 0:
         return
 
-    scale = (width - 40) / pat_w
-    height = int(pat_h * scale) + 40
+    # UI要素のスケール係数（width=800 を基準に比例）
+    ui = width / 800.0
+
+    margin = int(20 * ui)
+    scale = (width - 2 * margin) / pat_w
+    height = int(pat_h * scale) + 2 * margin
 
     if thread_width_mm > 0:
         thread_px = max(1, round(thread_width_mm * scale))
@@ -501,12 +505,12 @@ def generate_preview(pattern: EmbroideryPattern,
     img = np.full((height, width, 3), bg_color, dtype=np.uint8)
 
     # Hoop outline (decorative dashed ellipse, matching SVG dasharray 8,4)
-    margin = 20
     hoop_cx = width // 2
     hoop_cy = height // 2
     hoop_rx = (width - margin) // 2
     hoop_ry = (height - margin) // 2
     hoop_color = (144, 176, 192)  # #c0b090 in BGR
+    hoop_thickness = max(1, round(2 * ui))
     import math
     # Sample enough points for smooth curves
     n_pts = 2000
@@ -514,7 +518,7 @@ def generate_preview(pattern: EmbroideryPattern,
     pts_x = [hoop_cx + hoop_rx * math.cos(a) for a in angles]
     pts_y = [hoop_cy + hoop_ry * math.sin(a) for a in angles]
     # Walk along the ellipse accumulating arc length
-    dash_on, gap_off = 8.0, 4.0
+    dash_on, gap_off = 8.0 * ui, 4.0 * ui
     arc = 0.0
     drawing = True
     seg_start = 0
@@ -529,7 +533,7 @@ def generate_preview(pattern: EmbroideryPattern,
                     cv2.line(img,
                              (int(pts_x[j]), int(pts_y[j])),
                              (int(pts_x[j + 1]), int(pts_y[j + 1])),
-                             hoop_color, 2, cv2.LINE_AA)
+                             hoop_color, hoop_thickness, cv2.LINE_AA)
             drawing = not drawing
             seg_start = i
             arc = 0.0
@@ -551,8 +555,8 @@ def generate_preview(pattern: EmbroideryPattern,
         if stitch.stitch_type == StitchType.END:
             break
 
-        px = int((stitch.x - bounds[0]) * scale) + 20
-        py = int((stitch.y - bounds[1]) * scale) + 20
+        px = int((stitch.x - bounds[0]) * scale) + margin
+        py = int((stitch.y - bounds[1]) * scale) + margin
 
         if prev_x is not None and prev_y is not None:
             color_idx = min(current_color_idx, len(colors) - 1)
@@ -568,8 +572,9 @@ def generate_preview(pattern: EmbroideryPattern,
         prev_x, prev_y = px, py
 
     # Info text and color legend (matching SVG preview)
-    margin = 20
-    info_y = height - 8
+    font_scale = 0.4 * ui
+    font_thickness = max(1, round(ui))
+    info_y = height - int(8 * ui)
     w_mm = bounds[2] - bounds[0]
     h_mm = bounds[3] - bounds[1]
     info = (f"{w_mm:.0f}x{h_mm:.0f}mm | "
@@ -577,14 +582,15 @@ def generate_preview(pattern: EmbroideryPattern,
             f"{len(colors)} colors")
 
     cv2.putText(img, info, (margin, info_y),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (136, 136, 136), 1,
-                cv2.LINE_AA)
+                cv2.FONT_HERSHEY_SIMPLEX, font_scale, (136, 136, 136),
+                font_thickness, cv2.LINE_AA)
 
     # Color swatches
-    swatch_size = 14
-    swatch_gap = 4
+    swatch_size = int(14 * ui)
+    swatch_gap = int(4 * ui)
+    swatch_border = max(1, round(ui))
     legend_x = width - margin - len(colors) * (swatch_size + swatch_gap)
-    legend_y = height - swatch_size - 6
+    legend_y = height - swatch_size - int(6 * ui)
     for i, color in enumerate(colors):
         cx = legend_x + i * (swatch_size + swatch_gap)
         bgr = (int(color.b), int(color.g), int(color.r))
@@ -593,7 +599,7 @@ def generate_preview(pattern: EmbroideryPattern,
                       bgr, cv2.FILLED)
         cv2.rectangle(img, (cx, legend_y),
                       (cx + swatch_size, legend_y + swatch_size),
-                      (102, 102, 102), 1)
+                      (102, 102, 102), swatch_border)
 
     cv2.imwrite(output_path, img)
 

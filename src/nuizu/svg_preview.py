@@ -16,7 +16,7 @@ def generate_svg_preview(
     canvas_width: int = 800,
     bg_color: str = "#f0ebe0",
     show_jumps: bool = False,
-    thread_width_mm: float = 0.4,
+    thread_width_mm: float = 0.136,
     stitch_opacity: float = 0.85,
     fabric_texture: bool = True,
 ):

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import os
+import re
 import traceback
 from pathlib import Path
 from typing import Literal
@@ -12,6 +14,36 @@ import typer
 
 PaletteName = Literal["auto", "janome", "brother", "madeira", "generic"]
 PreviewFormat = Literal["png", "svg", "none"]
+
+# ポリエステル密度 (g/cm³) — 刺繍糸で最も一般的な素材
+_POLYESTER_DENSITY = 1.38
+
+
+def parse_thread_width(value: str) -> float:
+    """糸幅の指定を解析する。
+
+    ``#50`` のような番手（メートル番手 Nm）表記と ``0.14`` のような
+    mm 直接指定の両方に対応する。
+
+    番手からの変換式: ``d (mm) = √(4 / (π × ρ × Nm))``
+    ρ にはポリエステルの密度 1.38 g/cm³ を使用。
+    """
+    value = value.strip()
+    m = re.fullmatch(r"#(\d+(?:\.\d+)?)", value)
+    if m:
+        nm = float(m.group(1))
+        if nm <= 0:
+            raise typer.BadParameter(f"番手は正の数を指定してください: {value}")
+        return math.sqrt(4.0 / (math.pi * _POLYESTER_DENSITY * nm))
+    try:
+        mm = float(value)
+    except ValueError:
+        raise typer.BadParameter(
+            f"糸幅は mm（例: 0.14）または番手（例: #50）で指定してください: {value}"
+        )
+    if mm <= 0:
+        raise typer.BadParameter(f"糸幅は正の数を指定してください: {value}")
+    return mm
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -37,7 +69,7 @@ def _run_convert(
     colors: int | None,
     max_colors: int,
     palette: str,
-    thread_width: float,
+    thread_width: str,
     density: float | None,
     stitch_length: float,
     angle: float,
@@ -61,7 +93,8 @@ def _run_convert(
     if output_path is None:
         output_path = str(in_file.with_suffix(ext))
 
-    fill_density = density if density is not None else thread_width
+    thread_width_mm = parse_thread_width(thread_width)
+    fill_density = density if density is not None else thread_width_mm
 
     if colors is not None:
         n_colors = colors
@@ -89,7 +122,7 @@ def _run_convert(
             outline=not no_outline,
             outline_satin=satin_outline,
             pull_compensation=pull_comp,
-            thread_width=thread_width,
+            thread_width=thread_width_mm,
             blur_radius=blur,
             min_region_ratio=min_region,
             auto_crop=auto_crop,
@@ -103,7 +136,7 @@ def _run_convert(
 
             if preview == "png":
                 thread_path = f"{base}_preview.png"
-                generate_preview(pattern, thread_path, thread_width_mm=thread_width)
+                generate_preview(pattern, thread_path, thread_width_mm=thread_width_mm)
                 if not quiet:
                     typer.echo(f"プレビュー（糸幅）: {thread_path}", err=True)
 
@@ -114,7 +147,7 @@ def _run_convert(
 
             elif preview == "svg":
                 svg_thread_path = f"{base}_preview.svg"
-                generate_svg_preview(pattern, svg_thread_path, thread_width_mm=thread_width)
+                generate_svg_preview(pattern, svg_thread_path, thread_width_mm=thread_width_mm)
                 if not quiet:
                     typer.echo(f"プレビュー（SVG 糸幅）: {svg_thread_path}", err=True)
 
@@ -155,8 +188,9 @@ def _make_command(ext: str, description: str):
         palette: PaletteName = typer.Option(
             "auto", "--palette", "-p", help="糸パレット",
         ),
-        thread_width: float = typer.Option(
-            0.4, "--thread-width", "-t", help="糸幅（mm）",
+        thread_width: str = typer.Option(
+            "#50", "--thread-width", "-t",
+            help="糸幅。番手（例: #50）または mm（例: 0.14）で指定",
         ),
         density: float | None = typer.Option(
             None, "--density", "-d", help="フィル行間隔（mm）。未指定時は --thread-width と同値",
