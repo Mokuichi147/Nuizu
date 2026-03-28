@@ -507,7 +507,20 @@ def _stitch_along_path(pts: np.ndarray,
 
         px0, py0, p0 = raw_stitches[i - 1]
 
+        need_subdivide = False
+
         if _line_exits_region(px0, py0, x, y):
+            need_subdivide = True
+        else:
+            # 直線距離がパス距離より大幅に短い場合、
+            # コンターが大きく曲がっており内側をショートカットしている。
+            path_dist = p - p0
+            dx, dy = x - px0, y - py0
+            straight_dist = (dx * dx + dy * dy) ** 0.5
+            if path_dist > 0.1 and straight_dist / path_dist < 0.9:
+                need_subdivide = True
+
+        if need_subdivide:
             # パスに沿って細かいステッチを挿入
             sub_step = 0.3  # mm
             sub_pos = p0 + sub_step
