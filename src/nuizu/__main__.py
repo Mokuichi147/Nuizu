@@ -70,7 +70,6 @@ def _run_convert(
     max_colors: int,
     palette: str,
     thread_width: str,
-    density: float | None,
     stitch_length: float,
     angle: float,
     auto_angle: bool,
@@ -94,7 +93,6 @@ def _run_convert(
         output_path = str(in_file.with_suffix(ext))
 
     thread_width_mm = parse_thread_width(thread_width)
-    fill_density = density if density is not None else thread_width_mm
 
     if colors is not None:
         n_colors = colors
@@ -114,7 +112,7 @@ def _run_convert(
             n_colors=n_colors,
             use_thread_palette=palette != "auto",
             thread_brand=palette,
-            fill_density=fill_density,
+            fill_density=thread_width_mm,
             stitch_length=stitch_length,
             fill_angle=angle,
             auto_angle=auto_angle,
@@ -192,9 +190,6 @@ def _make_command(ext: str, description: str):
             "#50", "--thread-width", "-t",
             help="糸幅。番手（例: #50）または mm（例: 0.14）で指定",
         ),
-        density: float | None = typer.Option(
-            None, "--density", "-d", help="フィル行間隔（mm）。未指定時は --thread-width と同値",
-        ),
         stitch_length: float = typer.Option(
             3.0, "--stitch-length", "-l", help="最大ステッチ長（mm）",
         ),
@@ -239,7 +234,7 @@ def _make_command(ext: str, description: str):
             input_path, output_path, ext,
             size=size, colors=colors,
             max_colors=max_colors, palette=palette,
-            thread_width=thread_width, density=density,
+            thread_width=thread_width,
             stitch_length=stitch_length, angle=angle,
             auto_angle=auto_angle, no_underlay=no_underlay,
             no_outline=no_outline, satin_outline=satin_outline,
