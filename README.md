@@ -11,26 +11,25 @@ JANOME、Brother、その他主要刺繍機向けの出力形式に対応。
 | Brother PES | `.pes` | Brother / Babylock |
 | JANOME JEF | `.jef` | JANOME |
 
-## 必要環境
+## インストール
 
-- `uv`
-- Python 3.12+
+[uv](https://docs.astral.sh/uv/) がインストールされていれば、インストール不要でそのまま実行できます。
 
 ```bash
-uv sync
+uvx nuizu dst photo.jpg
 ```
 
 ## クイックスタート
 
 ```bash
 # 基本変換（JEF形式、出力パス省略）
-uv run nuizu jef photo.jpg
+uvx nuizu jef photo.jpg
 
 # 12色、最長辺150mmで変換（プレビューはSVG形式に変更）
-uv run nuizu jef photo.png design.jef --colors 12 --size 150 --preview svg
+uvx nuizu jef photo.png design.jef --colors 12 --size 150 --preview svg
 
 # フル機能（最大色数指定、自動角度、プルコンペンセーション、背景あり）
-uv run nuizu dst photo.jpg design.dst \
+uvx nuizu dst photo.jpg design.dst \
   --max-colors 10 \
   --auto-angle --pull-comp 0.3 -b
 ```
@@ -38,10 +37,42 @@ uv run nuizu dst photo.jpg design.dst \
 基本構文:
 
 ```bash
-uv run nuizu <dst|pes|jef> 入力画像 [出力ファイル]
+uvx nuizu <dst|pes|jef> 入力画像 [出力ファイル]
 ```
 
 - `出力ファイル`を省略すると、入力画像と同名で拡張子だけが各形式に変わります（例: `photo.jpg` → `photo.dst`）。
+
+## 使用例
+
+### 写真をJANOMEで刺繍する
+
+```bash
+uvx nuizu jef portrait.jpg portrait.jef \
+  --palette janome --colors 8 --size 100 \
+  --auto-angle --pull-comp 0.3
+```
+
+### 被写体を自動クロップして刺繍
+
+```bash
+uvx nuizu dst flower.jpg flower.dst \
+  --auto-crop --colors 6
+```
+
+### 高品質仕上げ
+
+```bash
+uvx nuizu pes logo.png logo.pes \
+  --thread-width '#25' --stitch-length 2.5 --satin-outline \
+  --pull-comp 0.4 --max-colors 10
+```
+
+### シンプルな変換
+
+```bash
+uvx nuizu dst photo.jpg \
+  --no-underlay --no-outline --colors 4
+```
 
 ## 全オプション一覧（`dst` / `pes` / `jef` 共通）
 
@@ -86,6 +117,20 @@ uv run nuizu <dst|pes|jef> 入力画像 [出力ファイル]
 |-----------|-----------|------|
 | `--preview` | png | プレビュー生成 (`png`, `svg`, `none`) |
 | `-q, --quiet` | - | 進行状況メッセージを抑制 |
+
+## プルコンペンセーションの目安
+
+| 生地タイプ | 推奨値 (mm) |
+|-----------|-------------|
+| 薄い生地（オーガンジー、シルク） | 0.2 - 0.3 |
+| 中厚生地（コットン、リネン） | 0.3 - 0.4 |
+| 厚い生地（デニム、キャンバス） | 0.4 - 0.6 |
+
+## 制限事項
+
+- 出力ファイルのバイナリ形式はリバースエンジニアリングに基づいています。実機での動作は糸・生地・テンションなど多くの要因に依存します。
+- 写真の変換品質は元画像のコントラストと色の明確さに大きく左右されます。
+- 非常に大きな刺繍（200mm超）ではステッチ数が数万を超え、実機での刺繍時間が長くなります。
 
 ## 処理パイプライン
 
@@ -157,49 +202,3 @@ src/nuizu/
     ├── pes.py       # Brother PES ライター
     └── jef.py       # JANOME JEF ライター
 ```
-
-## 使用例
-
-### 写真をJANOMEで刺繍する
-
-```bash
-uv run nuizu jef portrait.jpg portrait.jef \
-  --palette janome --colors 8 --size 100 \
-  --auto-angle --pull-comp 0.3
-```
-
-### 被写体を自動クロップして刺繍
-
-```bash
-uv run nuizu dst flower.jpg flower.dst \
-  --auto-crop --colors 6
-```
-
-### 密度の高い高品質仕上げ
-
-```bash
-uv run nuizu pes logo.png logo.pes \
-  --density 0.25 --stitch-length 2.5 --satin-outline \
-  --pull-comp 0.4 --max-colors 10
-```
-
-### シンプルな変換
-
-```bash
-uv run nuizu dst photo.jpg \
-  --no-underlay --no-outline --colors 4
-```
-
-## プルコンペンセーションの目安
-
-| 生地タイプ | 推奨値 (mm) |
-|-----------|-------------|
-| 薄い生地（オーガンジー、シルク） | 0.2 - 0.3 |
-| 中厚生地（コットン、リネン） | 0.3 - 0.4 |
-| 厚い生地（デニム、キャンバス） | 0.4 - 0.6 |
-
-## 制限事項
-
-- 出力ファイルのバイナリ形式はリバースエンジニアリングに基づいています。実機での動作は糸・生地・テンションなど多くの要因に依存します。
-- 写真の変換品質は元画像のコントラストと色の明確さに大きく左右されます。
-- 非常に大きな刺繍（200mm超）ではステッチ数が数万を超え、実機での刺繍時間が長くなります。
