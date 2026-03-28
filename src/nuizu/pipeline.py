@@ -60,7 +60,6 @@ def convert_photo_to_embroidery(
     pull_compensation: float = 0.0,
     # Processing
     blur_radius: int = 3,
-    min_region_ratio: float = 0.003,
     auto_crop: bool = False,
     skip_background: bool = False,
     strict_colors: bool = False,
@@ -85,7 +84,6 @@ def convert_photo_to_embroidery(
         outline_satin: Use satin stitch for outlines.
         pull_compensation: Pull compensation in mm (0=off).
         blur_radius: Gaussian blur radius for preprocessing.
-        min_region_ratio: Minimum region area ratio.
         auto_crop: Auto-crop to subject.
         skip_background: Skip stitching detected background color.
         strict_colors: Keep exactly n_colors in the output palette.
@@ -217,11 +215,10 @@ def convert_photo_to_embroidery(
 
     # 4. Region segmentation
     log("[4/7] Segmenting regions...")
-    min_area = max(1, int(h * w * min_region_ratio))
     regions = extract_regions(
         label_map,
         palette,
-        min_area=min_area,
+        min_area=1,
         morph_cleanup=True,
         simplify_epsilon_min=0.5,
     )

@@ -78,7 +78,6 @@ def _run_convert(
     satin_outline: bool,
     pull_comp: float,
     blur: int,
-    min_region: float,
     auto_crop: bool,
     skip_bg: bool,
     preview: str | None,
@@ -122,7 +121,6 @@ def _run_convert(
             pull_compensation=pull_comp,
             thread_width=thread_width_mm,
             blur_radius=blur,
-            min_region_ratio=min_region,
             auto_crop=auto_crop,
             skip_background=skip_bg,
             strict_colors=strict,
@@ -214,9 +212,6 @@ def _make_command(ext: str, description: str):
         blur: int = typer.Option(
             3, "--blur", help="前処理ぼかし半径（0で無効）",
         ),
-        min_region: float = typer.Option(
-            0.001, "--min-region", help="最小領域比率",
-        ),
         auto_crop: bool = typer.Option(
             False, "--auto-crop", help="主被写体を自動検出してクロップ",
         ),
@@ -238,7 +233,7 @@ def _make_command(ext: str, description: str):
             stitch_length=stitch_length, angle=angle,
             auto_angle=auto_angle, no_underlay=no_underlay,
             no_outline=no_outline, satin_outline=satin_outline,
-            pull_comp=pull_comp, blur=blur, min_region=min_region,
+            pull_comp=pull_comp, blur=blur,
             auto_crop=auto_crop, skip_bg=not background,
             preview=preview if preview != "none" else None, quiet=quiet,
         )

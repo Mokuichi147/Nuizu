@@ -112,7 +112,7 @@ def _smooth_label_map(label_map: np.ndarray,
 
 def extract_regions(label_map: np.ndarray,
                     palette: List[Tuple[int, int, int]],
-                    min_area: int = 50,
+                    min_area: int = 1,
                     morph_cleanup: bool = True,
                     simplify_epsilon_min: float = 1.0,
                     ) -> List[Region]:
