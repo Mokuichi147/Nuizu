@@ -276,6 +276,10 @@ def _rotated_scanline_fill_segments(
     # 回転後のスキャンラインでは連続していても、元の形状では
     # 凹部を跨いでいる可能性がある。
     mask_orig, ox_orig, oy_orig = _rasterize_region(contour, holes)
+    # ラスタライズ誤差（回転前後のマスク差異）による
+    # 境界付近の偽陽性を防ぐため、バリデーション用マスクを1px膨張する。
+    kern = np.ones((3, 3), np.uint8)
+    mask_orig = cv2.dilate(mask_orig, kern, iterations=1)
     validated: List[List[Tuple[float, float]]] = []
     for segment in segments_back:
         validated.extend(
