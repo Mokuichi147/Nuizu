@@ -28,8 +28,8 @@ Pythonプロジェクトのリリース作業を実行します。
 ### 4. ビルド・リリース・公開
 - `uv build` で wheel と sdist をビルドする
 - `gh release create v{VERSION} --title "v{VERSION}" --notes "..."` でリリースを作成し、`dist/` 内のビルド成果物（`.whl` と `.tar.gz`）を添付する
-- リリースノートは変更内容から日本語で作成する
-- `uv publish` で PyPI に公開する
+- リリースノートは **前回タグから今回タグまでの差分のみ** を日本語で記載する。過去バージョンの変更内容を含めないこと
+- `uv publish` で PyPI に公開する。`dist/` 内の該当バージョンのファイルのみを指定する（`dist/nuizu-{VERSION}*`）
 
 ### 5. 完了報告
 - GitHub リリース URL を表示する
