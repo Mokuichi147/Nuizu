@@ -1,5 +1,9 @@
 # Nuizu
 
+![PyPI - License](https://img.shields.io/pypi/l/nuizu)
+![PyPI - Version](https://img.shields.io/pypi/v/nuizu)
+![Pepy Total Downloads](https://img.shields.io/pepy/dt/nuizu)
+
 写真・イラスト・漫画など、あらゆる画像を刺繍用データファイルに変換するPython CLIツール。
 JANOME、Brother、その他主要刺繍機向けの出力形式に対応。
 
