@@ -239,6 +239,12 @@ def _rotated_scanline_fill_segments(
             span_stitches = [(s_mm, row_y_mm)]
 
             offset = (row_offset_mm % stitch_length) if stitch_length else 0
+            # スタガーオフセット位置に中間ステッチを入れ、
+            # 最初のステッチ間距離が stitch_length を超えないようにする。
+            if offset > 0.05:
+                first_x = s_mm + offset
+                if first_x < e_mm - 0.05:
+                    span_stitches.append((first_x, row_y_mm))
             x_mm = s_mm + offset + stitch_length
             while x_mm < e_mm - 0.05:
                 span_stitches.append((x_mm, row_y_mm))
@@ -266,7 +272,77 @@ def _rotated_scanline_fill_segments(
         pts_back = _rotate_points(pts, angle, center)
         segments_back.append([tuple(p) for p in pts_back])
 
-    return segments_back
+    # 元座標でステッチ間の中間点が領域外なら分割する。
+    # 回転後のスキャンラインでは連続していても、元の形状では
+    # 凹部を跨いでいる可能性がある。
+    mask_orig, ox_orig, oy_orig = _rasterize_region(contour, holes)
+    validated: List[List[Tuple[float, float]]] = []
+    for segment in segments_back:
+        validated.extend(
+            _split_outside(segment, mask_orig, ox_orig, oy_orig, ppm)
+        )
+
+    return validated
+
+
+def _split_outside(
+    segment: List[Tuple[float, float]],
+    mask: np.ndarray,
+    ox: float,
+    oy: float,
+    ppm: float,
+) -> List[List[Tuple[float, float]]]:
+    """連続するステッチ間のラインが領域外を通過するならセグメントを分割する。
+
+    2点間のラインを細かくサンプリングし、領域外のピクセルを通過する
+    場合はそこでセグメントを分割する。
+    """
+    if len(segment) < 2:
+        return [segment] if segment else []
+
+    h, w = mask.shape
+    # サンプリング間隔（mm）。細かいほど凹部の検出精度が上がる。
+    sample_step_mm = 0.3
+
+    def _line_crosses_outside(x0: float, y0: float,
+                              x1: float, y1: float) -> bool:
+        """2点間のラインが領域外を通るか判定する。"""
+        dx = x1 - x0
+        dy = y1 - y0
+        dist = (dx * dx + dy * dy) ** 0.5
+        if dist < 0.01:
+            return False
+
+        n_samples = max(int(dist / sample_step_mm), 3)
+        for k in range(1, n_samples):
+            t = k / n_samples
+            sx = x0 + dx * t
+            sy = y0 + dy * t
+            px = int(round((sx - ox) * ppm))
+            py = int(round((sy - oy) * ppm))
+            if px < 0 or px >= w or py < 0 or py >= h:
+                return True
+            if mask[py, px] == 0:
+                return True
+        return False
+
+    result: List[List[Tuple[float, float]]] = []
+    current: List[Tuple[float, float]] = [segment[0]]
+
+    for i in range(1, len(segment)):
+        x0, y0 = segment[i - 1]
+        x1, y1 = segment[i]
+
+        if _line_crosses_outside(x0, y0, x1, y1):
+            if current:
+                result.append(current)
+            current = [segment[i]]
+        else:
+            current.append(segment[i])
+
+    if current:
+        result.append(current)
+    return result
 
 
 def _find_spans(row: np.ndarray) -> List[Tuple[int, int]]:
@@ -296,6 +372,10 @@ def generate_outline_stitches(
     stitch_length: float = 2.5,
     satin_width: float = 1.5,
     satin: bool = False,
+    region_mask: np.ndarray = None,
+    mask_ox: float = 0.0,
+    mask_oy: float = 0.0,
+    mask_ppm: float = _RASTER_PPM,
 ) -> List[Tuple[float, float]]:
     """Generate outline stitches (running or satin) along a contour.
 
@@ -304,6 +384,9 @@ def generate_outline_stitches(
         stitch_length: Length of each stitch in mm.
         satin_width: Width of satin stitches (if satin=True).
         satin: If True, generate satin stitches; else running stitch.
+        region_mask: リージョンのバイナリマスク（凹部検出用）。
+        mask_ox, mask_oy: マスクの原点（mm）。
+        mask_ppm: マスクの解像度（pixels per mm）。
 
     Returns:
         List of (x, y) stitch coordinates.
@@ -316,7 +399,8 @@ def generate_outline_stitches(
         pts = np.vstack([pts, pts[0]])
 
     if not satin:
-        return _stitch_along_path(pts, stitch_length)
+        return _stitch_along_path(pts, stitch_length,
+                                  region_mask, mask_ox, mask_oy, mask_ppm)
 
     stitches = []
     half_w = satin_width / 2
@@ -354,9 +438,17 @@ def generate_outline_stitches(
 
 
 def _stitch_along_path(pts: np.ndarray,
-                       stitch_length: float
+                       stitch_length: float,
+                       region_mask: np.ndarray = None,
+                       mask_ox: float = 0.0,
+                       mask_oy: float = 0.0,
+                       mask_ppm: float = _RASTER_PPM,
                        ) -> List[Tuple[float, float]]:
-    """Generate evenly spaced stitches along a polyline path."""
+    """Generate evenly spaced stitches along a polyline path.
+
+    region_mask が指定された場合、ステッチ間の直線がリージョン外を
+    通る箇所でパスに沿った中間ステッチを自動挿入する。
+    """
     diffs = np.diff(pts, axis=0)
     seg_lengths = np.sqrt(np.sum(diffs ** 2, axis=1))
     cum_lengths = np.concatenate([[0], np.cumsum(seg_lengths)])
@@ -365,17 +457,64 @@ def _stitch_along_path(pts: np.ndarray,
     if total_length < 0.1:
         return [tuple(pts[0])]
 
-    stitches = []
-    pos = 0
+    # まず通常間隔でステッチ位置を決定
+    positions: List[float] = []
+    pos = 0.0
     while pos <= total_length:
-        x, y = _interpolate_path(pts, cum_lengths, pos)
-        stitches.append((float(x), float(y)))
+        positions.append(pos)
         pos += stitch_length
+    if abs(positions[-1] - total_length) > 0.05:
+        positions.append(total_length)
 
-    if abs(pos - stitch_length - total_length) > 0.05:
-        stitches.append((float(pts[-1, 0]), float(pts[-1, 1])))
+    raw_stitches = []
+    for p in positions:
+        x, y = _interpolate_path(pts, cum_lengths, p)
+        raw_stitches.append((float(x), float(y), p))
 
-    return stitches
+    if region_mask is None:
+        return [(x, y) for x, y, _ in raw_stitches]
+
+    # ステッチ間の直線がリージョン外を通る場合、
+    # パスに沿った中間点を挿入する
+    h, w = region_mask.shape
+    sample_step = 0.2  # mm
+
+    def _line_exits_region(x0, y0, x1, y1):
+        dx, dy = x1 - x0, y1 - y0
+        dist = (dx * dx + dy * dy) ** 0.5
+        if dist < 0.05:
+            return False
+        n = max(int(dist / sample_step), 3)
+        for k in range(1, n):
+            t = k / n
+            px = int(round((x0 + dx * t - mask_ox) * mask_ppm))
+            py = int(round((y0 + dy * t - mask_oy) * mask_ppm))
+            if px < 0 or px >= w or py < 0 or py >= h:
+                return True
+            if region_mask[py, px] == 0:
+                return True
+        return False
+
+    result: List[Tuple[float, float]] = []
+    for i, (x, y, p) in enumerate(raw_stitches):
+        if i == 0:
+            result.append((x, y))
+            continue
+
+        px0, py0, p0 = raw_stitches[i - 1]
+
+        if _line_exits_region(px0, py0, x, y):
+            # パスに沿って細かいステッチを挿入
+            sub_step = 0.3  # mm
+            sub_pos = p0 + sub_step
+            while sub_pos < p - 0.05:
+                sx, sy = _interpolate_path(pts, cum_lengths, sub_pos)
+                result.append((float(sx), float(sy)))
+                sub_pos += sub_step
+
+        result.append((x, y))
+
+    return result
 
 
 def _interpolate_path(pts: np.ndarray,

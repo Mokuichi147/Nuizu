@@ -15,10 +15,10 @@ import os
 
 from .preprocess import detect_background, auto_crop_to_subject
 from .quantize import quantize_colors
-from .segment import extract_regions, scale_regions_to_mm, Region, _chaikin_smooth
-from .fill import generate_fill_stitch_segments, generate_outline_stitches
+from .segment import extract_regions, scale_regions_to_mm
+from .fill import generate_fill_stitch_segments, generate_outline_stitches, _rasterize_region, _RASTER_PPM
 from .optimize import optimize_stitch_order, split_long_stitches
-from .compensate import apply_pull_compensation, apply_fill_compensation, inset_contour
+from .compensate import apply_pull_compensation, apply_fill_compensation
 from .auto_angle import compute_optimal_fill_angle
 from .palettes import get_palette
 from .formats.common import (
@@ -108,9 +108,15 @@ def convert_photo_to_embroidery(
 
     # Extract alpha mask before converting to 3-channel RGB.
     # Transparent pixels are the background in alpha-channel images.
+    # Erode the mask by 1px to discard anti-aliased edge pixels that
+    # produce spurious tiny regions with stray fill stitches.
     alpha_mask: Optional[np.ndarray] = None
     if img.ndim == 3 and img.shape[2] == 4:
         alpha_mask = img[:, :, 3] > 127  # True = opaque (foreground)
+        kernel = np.ones((3, 3), np.uint8)
+        alpha_mask = cv2.erode(
+            alpha_mask.astype(np.uint8), kernel, iterations=1
+        ).astype(bool)
         img = img[:, :, :3]
     elif img.ndim == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -339,7 +345,6 @@ def convert_photo_to_embroidery(
         fill_holes = region.holes_raw_mm if region.holes_raw_mm else \
             (region.holes_mm if region.holes_mm else [])
         contour = region.contour_mm
-        holes = region.holes_mm if region.holes_mm else []
 
         if comp_mm > 0:
             contour = apply_pull_compensation(contour, comp_mm)
@@ -400,42 +405,25 @@ def convert_photo_to_embroidery(
             for x, y in fill_segment:
                 pattern.add_stitch(x, y, StitchType.NORMAL)
 
-        # Outline stitches (smooth contour for curves)
-        if outline and region.contour_mm is not None:
-            # Inset the outline by half the thread width so the outer
-            # edge of the thread aligns with the original contour.
-            inset_mm = thread_width / 2
-            inset_pts = inset_contour(region.contour_mm, inset_mm)
-            base_contour = inset_pts if inset_pts is not None else region.contour_mm
-
-            # Skip smoothing when the contour has sharp corners
-            # (e.g. panel borders, rectangular frames) to avoid
-            # rounding intentionally geometric features.
-            has_sharp = False
-            pts = base_contour
-            n = len(pts)
-            if n >= 3:
-                for i in range(n):
-                    v1 = pts[(i - 1) % n] - pts[i]
-                    v2 = pts[(i + 1) % n] - pts[i]
-                    len1 = np.linalg.norm(v1)
-                    len2 = np.linalg.norm(v2)
-                    if len1 > 0 and len2 > 0:
-                        cos_a = np.clip(
-                            np.dot(v1, v2) / (len1 * len2), -1, 1)
-                        angle = np.degrees(np.arccos(cos_a))
-                        if angle <= 100:
-                            has_sharp = True
-                            break
-            if not has_sharp and n >= 5:
-                outline_contour = _chaikin_smooth(pts, iterations=2)
-            else:
-                outline_contour = pts
+        # Outline stitches — raw contour をそのまま使用。
+        # Chaikin スムージングは凹部をショートカットするため使わない。
+        # 凹部でステッチの直線がリージョン外を通る場合は
+        # コンターパスに沿った中間ステッチを自動挿入する。
+        raw_contour = region.contour_raw_mm if region.contour_raw_mm is not None \
+            else region.contour_mm
+        if outline and raw_contour is not None:
+            outline_contour = raw_contour
+            outline_mask, o_ox, o_oy = _rasterize_region(
+                fill_contour, fill_holes)
             outline_pts = generate_outline_stitches(
                 contour=outline_contour,
                 stitch_length=1.5,
                 satin_width=1.2,
                 satin=outline_satin,
+                region_mask=outline_mask,
+                mask_ox=o_ox,
+                mask_oy=o_oy,
+                mask_ppm=_RASTER_PPM,
             )
             if outline_pts:
                 outline_pts = split_long_stitches(outline_pts, max_length=7.0)
@@ -497,8 +485,10 @@ def generate_preview(pattern: EmbroideryPattern,
     scale = (width - 2 * margin) / pat_w
     height = int(pat_h * scale) + 2 * margin
 
+    import math as _math
     if thread_width_mm > 0:
-        thread_px = max(1, round(thread_width_mm * scale))
+        # 切り上げでフィル行間の隙間を防ぐ
+        thread_px = max(1, _math.ceil(thread_width_mm * scale))
     else:
         thread_px = 1
 
