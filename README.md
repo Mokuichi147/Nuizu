@@ -56,6 +56,38 @@ uvx nuizu jef portrait.jpg portrait.jef \
   --auto-angle --pull-comp 0.3
 ```
 
+### カスタムパレット（手持ちの糸）を使う
+
+手持ちの糸をYAMLファイルで定義して使用できます。
+
+```bash
+# テンプレートを生成
+uvx nuizu palette init my_threads.yaml
+
+# 特定ブランドのセットをベースにテンプレートを生成
+uvx nuizu palette init --set brother-ets39 my_threads.yaml
+
+# 生成したパレットで変換
+uvx nuizu pes photo.jpg --palette my_threads.yaml
+```
+
+YAMLパレット例:
+
+```yaml
+threads:
+  # ブランド色番号で指定
+  - brand: brother
+    color: 800
+    thread-width: "#40"
+    comment: 赤（Brother No.800）
+
+  # 手持ちの糸をhexで直接指定
+  - color: "#3A7D44"
+    thread-width: 0.14
+    material: rayon
+    comment: 緑（手持ち）
+```
+
 ### 被写体を自動クロップして刺繍
 
 ```bash
@@ -92,13 +124,13 @@ uvx nuizu dst photo.jpg \
 |-----------|-----------|------|
 | `-c, --colors` | - | 使用する糸色数（厳密に維持） |
 | `-m, --max-colors` | 8 | 最大糸色数（指定数以下に自動調整） |
-| `-p, --palette` | auto | 糸パレット (`auto`, `janome`, `brother`, `madeira`, `generic`) |
+| `-p, --palette` | auto | 糸パレット。`auto` / 組み込み名 / YAMLファイルパスを指定。組み込み: `janome`, `brother`, `madeira`, `generic` など60+ブランド |
 
 ### ステッチ
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `-t, --thread-width` | #50 | 糸幅。番手（例: `#50`）または mm（例: `0.14`）。フィル行間隔も同値 |
+| `-t, --thread-width` | #50 | 糸幅。番手（例: `#50`）または mm（例: `0.14`）。フィル行間隔も同値。YAMLパレットで糸ごとに個別指定も可 |
 | `-l, --stitch-length` | 3.0 | 最大ステッチ長 mm |
 | `-a, --angle` | 45 | フィルステッチ角度（度） |
 | `--auto-angle` | - | 領域ごとに最適フィル角度を自動決定 |
@@ -185,6 +217,30 @@ uvx nuizu dst photo.jpg \
 [6] ファイル出力（DST / PES / JEF）
 ```
 
+## パレット管理コマンド
+
+```bash
+# テンプレート生成（サンプル入り）
+uvx nuizu palette init
+
+# 利用可能なセット一覧を表示
+uvx nuizu palette init --list
+
+# ブランドのセット売り内容をベースに生成
+uvx nuizu palette init --set brother-ets39
+
+# 複数セットを結合
+uvx nuizu palette init --set brother-ets39 --set brother-ets22 my_palette.yaml
+```
+
+### 組み込みセット
+
+| セット名 | 内容 |
+|---------|------|
+| `brother-ets39` | Brother ウルトラポス 39色セット (ETS39) |
+| `brother-ets22` | Brother ウルトラポス 新色22色セット (ETS22) |
+| `brother-cts40` | Brother カントリー刺繍糸 40色セット (CTS40) |
+
 ## アーキテクチャ
 
 ```
@@ -193,7 +249,10 @@ src/nuizu/
 ├── pipeline.py      # メイン変換パイプライン
 ├── preprocess.py    # 画像前処理（背景検出、自動クロップ）
 ├── quantize.py      # 色量子化（K-means / LAB色空間 / クラスタマージ）
-├── palettes.py      # 実メーカー糸パレット（JANOME / Brother / Madeira）
+├── palettes/
+│   ├── __init__.py  # パレット読み込みAPI（組み込み / YAML）
+│   ├── colors/      # 60+ブランドの全色CSVパレット
+│   └── sets/        # 実売セット単位のYAMLテンプレート
 ├── segment.py       # 領域分割（OpenCV contour / 穴あり階層抽出）
 ├── auto_angle.py    # フィル角度自動最適化（PCA / minAreaRect）
 ├── fill.py          # フィルステッチ生成（ラスタスキャンライン方式 / 凹部検出）
