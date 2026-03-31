@@ -1,0 +1,198 @@
+# Brother ウルトラポス 39色セット (ETS39)
+# 品番: X81112-001 / 素材: ポリエステル / 番手: #40 / 各300m
+# https://direct.brother.co.jp/shop/g/gX81112001/
+threads:
+  - brand: brother
+    color: 1
+    thread-width: "#40"
+    comment: White
+
+  - brand: brother
+    color: 5
+    thread-width: "#40"
+    comment: Silver
+
+  - brand: brother
+    color: 7
+    thread-width: "#40"
+    comment: Prussian Blue
+
+  - brand: brother
+    color: 10
+    thread-width: "#40"
+    comment: Cream Brown
+
+  - brand: brother
+    color: 17
+    thread-width: "#40"
+    comment: Light Blue
+
+  - brand: brother
+    color: 19
+    thread-width: "#40"
+    comment: Sky Blue
+
+  - brand: brother
+    color: 27
+    thread-width: "#40"
+    comment: Fresh Green
+
+  - brand: brother
+    color: 30
+    thread-width: "#40"
+    comment: Vermilion
+
+  - brand: brother
+    color: 58
+    thread-width: "#40"
+    comment: Dark Brown
+
+  - brand: brother
+    color: 70
+    thread-width: "#40"
+    comment: Corn Flower
+
+  - brand: brother
+    color: 79
+    thread-width: "#40"
+    comment: Salmon Pink
+
+  - brand: brother
+    color: 85
+    thread-width: "#40"
+    comment: Pink
+
+  - brand: brother
+    color: 86
+    thread-width: "#40"
+    comment: Deep Rose
+
+  - brand: brother
+    color: 107
+    thread-width: "#40"
+    comment: Dark Fuchsia
+
+  - brand: brother
+    color: 124
+    thread-width: "#40"
+    comment: Flesh Pink
+
+  - brand: brother
+    color: 205
+    thread-width: "#40"
+    comment: Yellow
+
+  - brand: brother
+    color: 208
+    thread-width: "#40"
+    comment: Orange
+
+  - brand: brother
+    color: 209
+    thread-width: "#40"
+    comment: Tangerine
+
+  - brand: brother
+    color: 214
+    thread-width: "#40"
+    comment: Deep Gold
+
+  - brand: brother
+    color: 307
+    thread-width: "#40"
+    comment: Linen
+
+  - brand: brother
+    color: 323
+    thread-width: "#40"
+    comment: Light Brown
+
+  - brand: brother
+    color: 328
+    thread-width: "#40"
+    comment: Brass
+
+  - brand: brother
+    color: 339
+    thread-width: "#40"
+    comment: Clay Brown
+
+  - brand: brother
+    color: 405
+    thread-width: "#40"
+    comment: Blue
+
+  - brand: brother
+    color: 420
+    thread-width: "#40"
+    comment: Electric Blue
+
+  - brand: brother
+    color: 502
+    thread-width: "#40"
+    comment: Mint Green
+
+  - brand: brother
+    color: 507
+    thread-width: "#40"
+    comment: Emerald Green
+
+  - brand: brother
+    color: 513
+    thread-width: "#40"
+    comment: Lime Green
+
+  - brand: brother
+    color: 515
+    thread-width: "#40"
+    comment: Moss Green
+
+  - brand: brother
+    color: 534
+    thread-width: "#40"
+    comment: Teal Green
+
+  - brand: brother
+    color: 612
+    thread-width: "#40"
+    comment: Lilac
+
+  - brand: brother
+    color: 614
+    thread-width: "#40"
+    comment: Purple
+
+  - brand: brother
+    color: 620
+    thread-width: "#40"
+    comment: Magenta
+
+  - brand: brother
+    color: 704
+    thread-width: "#40"
+    comment: Pewter
+
+  - brand: brother
+    color: 707
+    thread-width: "#40"
+    comment: Dark Gray
+
+  - brand: brother
+    color: 800
+    thread-width: "#40"
+    comment: Red
+
+  - brand: brother
+    color: 810
+    thread-width: "#40"
+    comment: Light Lilac
+
+  - brand: brother
+    color: 843
+    thread-width: "#40"
+    comment: Beige
+
+  - brand: brother
+    color: 900
+    thread-width: "#40"
+    comment: Black

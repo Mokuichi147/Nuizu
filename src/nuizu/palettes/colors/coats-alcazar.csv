@@ -1,0 +1,501 @@
+color,number,comment
+#E6E8FF,1,White
+#ECE659,2,Light Yellow
+#EFDA17,3,Yellow
+#F1D700,5,Yellow
+#BDB984,6,Pale Yellow / Green
+#99852E,8,Medium Yellow / Green
+#F2A800,11,Medium Orange
+#F2AF1E,12,Light Orange
+#D9A931,13,Light Orange
+#C49C30,14,Brown / Gold
+#BE8A10,15,Orange / Brown
+#AA7317,16,Brown / Olive
+#9D7249,17,Brown
+#B27100,18,Orange / Brown
+#969350,19,Medium Green / Yellow
+#857F35,20,Dark Green / Yellow
+#E9E9E8,22,White
+#BEA83B,23,Medium Green / Yellow
+#9A8652,24,Pale Brown
+#AA8D54,25,Medium Yellow
+#E2DEDA,26,Light Orange / Red
+#A88C66,27,Pale Brown
+#8E5B24,28,Medium Brown
+#A17439,29,Pale Brown
+#A05807,31,Orange / Brown
+#E9EBE3,101,Light Yellow
+#EAEBCE,103,Light Yellow
+#F1DA97,104,Light Orange
+#EBDF81,105,Pale Yellow / Gold
+#F18F00,109,Medium Orange
+#F28B00,120,Medium Orange
+#F17C00,122,Orange
+#EB5C00,124,Orange / Red
+#B8A063,125,Pale Green / Yellow
+#A89034,126,Medium Green / Yellow
+#685923,129,Dark Green / Yellow
+#CD9342,131,Pale Orange / Brown
+#C88331,132,Medium Orange / Brown
+#F1CC67,133,Yellow Gold
+#F4C447,134,Yellow Gold
+#F5BE22,135,Medium Orange
+#D0AA2E,136,Medium Yellow
+#E0D0BE,137,Light Orange
+#9C732C,138,Medium Brown
+#EBE8D0,139,Pale Orange
+#E9E8DB,140,Light Yellow
+#AF6400,141,Orange / Brown
+#E4CF97,150,Light Yellow / Orange
+#D23F00,202,Dark Orange
+#E8C5BB,203,Pale Orange
+#F3AD9A,205,Pale Orange
+#EF8F78,206,Medium Orange
+#AE372C,207,Orange / Red
+#E96005,208,Orange
+#AD2B16,209,Light Orange / Red
+#A63025,210,Dark Orange / Red
+#C0352C,211,Orange / Red
+#EB9396,212,Light Orange
+#E99864,213,Pale Orange
+#DB3100,215,Orange / Red
+#DFB9A7,218,Pale / Orange
+#AA4C28,219,Brown
+#DF5700,220,Orange
+#E1B0B2,221,Medium Pink
+#F18935,222,Medium Orange
+#9D7D2D,223,Medium Green / Yellow
+#C99F78,225,Light Red / Orange
+#D6566E,227,Medium Pink
+#A62449,229,Dark Pink
+#6F2632,230,Brown
+#5B1D28,231,Dark Brown
+#972F33,238,Dark Orange / Red
+#7F2F34,240,Brown
+#E0B7A1,242,Pale Orange
+#BB855C,245,Pale Red / Orange
+#BD724E,246,Brown
+#AB5F22,247,Orange / Brown
+#8A5435,248,Brown
+#804B28,250,Brown
+#804C43,251,Dark Brown
+#EFBA90,252,Light Orange
+#EDAF79,253,Medium Orange
+#EE9C55,254,Medium Orange
+#D36A32,257,Orange
+#B26534,258,Dark Orange / Brown
+#ED5700,260,Orange
+#BC5D3D,262,Brown
+#A14C42,265,Dark Red / Orange
+#76352F,267,Dark Brown
+#6E3336,271,Dark Brown
+#9F5341,273,Medium Brown
+#BD001A,300,Medium Red / Orange
+#A66780,301,Medium Purple
+#E3788A,302,Medium Pink
+#A1002B,303,Dark Red / Orange
+#D98392,306,Medium Pink
+#A90049,307,Red
+#A05566,308,Medium Pink
+#CF367A,309,Dark Pink
+#80273D,311,Brown
+#772E42,312,Brown
+#E7BFD1,313,Light Pink
+#E7C2DE,316,Light Pink
+#B95778,317,Dark Pink
+#B9DDBD,318,Light Green / Yellow
+#8C2C4D,319,Brown
+#DA4C55,321,Medium Red / Orange
+#8C3657,322,Brown
+#A00025,323,Dark Red
+#77264A,324,Dark Purple
+#874450,326,Dark Brown
+#D53E62,327,Red
+#733E56,329,Dark Purple
+#701E51,330,Dark Purple
+#D0539E,331,Medium Pink
+#C20F7D,332,Dark Pink
+#E39BC6,335,Light Pink
+#BC6396,337,Medium Pink
+#622E4D,338,Dark Purple
+#BE5C90,339,Medium Pink
+#974675,340,Medium Purple
+#A2426C,341,Medium Purple
+#863463,342,Medium Purple
+#AD003A,343,Dark Red
+#A80024,344,Red
+#8F0031,345,Dark Red
+#49213C,346,Dark Purple
+#7B1035,347,Dark Purple
+#35222C,348,Dark Brown
+#641F34,349,Brown
+#592037,350,Dark Purple
+#ECCFDE,355,Light Pink
+#E7BED3,356,Light Pink
+#D7608F,358,Dark Pink
+#D22667,360,Red
+#C7175E,361,Red
+#8C0032,363,Red
+#E3A2BE,364,Light Pink
+#D66D87,365,Medium Pink
+#C85284,366,Medium Pink
+#DC6562,367,Dark Red / Orange
+#D9233F,368,Dark Red / Orange
+#B02782,369,Medium Purple
+#DD3039,370,Warm Red
+#C50030,372,Red
+#BC0059,373,Dark Red
+#A5006E,376,Dark Red
+#9D005D,377,Dark Red
+#BD273D,378,Dark Red / Orange
+#44232C,380,Dark Purple
+#DE72B7,381,Medium Pink
+#E27EAA,382,Pink
+#B8005D,383,Dark Pink
+#A69C8F,400,Warm Gray
+#B797A0,401,Light Purple
+#5F4D32,402,Dark Green / Yellow
+#9E7375,404,Pale Brown
+#A67D8A,406,Light Purple
+#6E5164,408,Medium Purple
+#A4A2A5,409,Light Grey
+#A19A7D,410,Pale Green / Yellow
+#75685F,411,Medium Brown
+#73635D,412,Medium Brown
+#7B6F56,413,Medium Green / Yellow
+#534542,414,Dark Brown
+#846449,416,Medium Brown
+#C4C0AF,417,Light Grey / Green
+#5F3D2C,418,Dark Brown
+#947F64,419,Light Green / Yellow
+#AB977D,420,Light Brown
+#9D9184,421,Light Brown
+#C0AEA1,422,Pale Orange
+#D1D0CB,423,Light Green
+#7D7261,424,Medium Green / Yellow
+#A9A399,425,Light Green / Yellow
+#C1B6A8,426,Light Brown
+#868177,427,Dark Grey
+#675F50,428,Dark Grey
+#B7B4A5,429,Light Grey / Green
+#D3CDA6,430,Light Green / Yellow
+#9F9E8B,431,Pale Green / Yellow
+#BFA589,432,Pale Orange
+#9B9472,433,Medium Green / Grey
+#594B33,435,Dark Green / Grey
+#D0B388,436,Light Brown
+#A09B86,439,Pale Green / Grey
+#A06B5D,440,Orange / Brown
+#5B403C,441,Dark Brown
+#CBC0BF,442,Light Purple
+#453230,443,Black
+#8E7979,445,Medium Brown
+#787664,446,Medium Green / Yellow
+#88665E,447,Medium Brown
+#BBAC9A,449,Light Brown
+#A18A81,450,Light Brown
+#7A4C3E,451,Dark Brown
+#C7C8BA,452,Light Green / Yellow
+#5B4034,453,Brown
+#483835,455,Black
+#302230,456,Dark Purple / Navy
+#C2AB95,457,Pale Orange
+#8F6C4D,459,Medium Brown
+#6E523A,460,Brown
+#664128,461,Brown
+#4B342D,462,Dark Brown
+#3E3033,463,Black
+#4A2425,466,Dark Brown
+#3A2128,467,Dark Brown
+#E6C6C7,471,Medium Pink
+#A89976,472,Pale Green / Yellow
+#D4CDC3,473,Light Grey / Green
+#C8B4A3,474,Light Brown
+#A0894C,475,Light Green / Yellow
+#99764C,476,Pale Brown
+#8F6634,477,Medium Orange / Brown
+#B2838B,479,Pale Pink
+#6F4B3B,480,Brown
+#54392D,481,Dark Brown
+#C8BAB5,482,Light Pink
+#BAA89C,483,Light Brown
+#9A8171,484,Pale Brown
+#9A897E,485,Light Brown
+#8E7260,486,Pale Brown
+#70523C,487,Medium Brown
+#3B4021,488,Green
+#E9E8BF,489,Light Yellow
+#67BB39,501,Green
+#BECEBD,503,Light Green
+#1BB79E,504,Medium Green / Blue
+#77A28E,505,Pale Green / Blue
+#439386,507,Medium Green / Blue
+#00533D,510,Dark Green
+#234D30,512,Dark Green
+#4D864B,513,Dark Green
+#88A980,514,Medium Green
+#008642,519,Green
+#223F2F,520,Dark Green
+#9AD9E0,521,Light Blue / Green
+#1EB2A7,523,Medium Blue / Green
+#00ACAB,524,Medium Green / Blue
+#66C7CA,525,Light Blue / Green
+#00A297,526,Medium Green / Blue
+#004D2D,527,Dark Green
+#008A6F,528,Dark Blue / Green
+#008C7D,529,Medium Green / Blue
+#005D4D,530,Green
+#00605D,531,Dark Green / Blue
+#9DBDAE,532,Pale Green / Blue
+#6C927A,533,Pale Blue / Green
+#3F7464,534,Dark Green
+#008668,535,Blue / Green
+#60A299,536,Medium Green / Blue
+#A6DB90,537,Light Green / Yellow
+#1B473F,538,Dark Green / Blue
+#377B6F,539,Dark Blue / Green
+#B5C09F,540,Dark Green / Yellow
+#243C35,541,Dark Green / Blue
+#A0C395,542,Light Green
+#9DD7D2,543,Light Green / Blue
+#699041,547,Green / Yellow
+#5EC39F,551,Medium Green
+#657354,552,Medium Blue / Green
+#007249,553,Green
+#006B31,555,Green
+#499D62,556,Green
+#00894D,557,Green
+#007744,558,Green
+#005D2E,559,Green
+#78B439,560,Green / Yellow
+#82BF4C,562,Green / Yellow
+#2F3B29,563,Dark Green
+#8A8C7A,564,Pale Grey
+#537C3B,565,Medium Green
+#4BAA82,569,Green
+#3C7948,570,Dark Green
+#52A02D,571,Green / Yellow
+#13542C,573,Green
+#208F6B,574,Medium Green
+#5A5B1C,575,Dark Green / Yellow
+#3F6B3C,578,Dark Green
+#385B30,579,Dark Green
+#006D3E,580,Green
+#487661,581,Dark Green
+#128B7D,582,Green / Blue
+#8BA44F,583,Medium Green / Yellow
+#7A832D,584,Medium Green / Yellow
+#818544,585,Medium Green / Yellow
+#2D523F,586,Dark Green
+#6A7237,589,Dark Green / Yellow
+#1C322F,590,Dark Blue / Green
+#1C302F,592,Dark Blue / Green
+#555E43,595,Medium Green / Yellow
+#005B62,596,Blue / Green
+#0098AA,597,Dark Blue / Green
+#35894A,598,Dark Green
+#223B4C,601,Dark Blue
+#778AB2,602,Medium Blue
+#5369A4,603,Medium Purple
+#38427C,604,Medium Purple
+#2A3A75,605,Dark Blue
+#34475B,606,Dark Blue / Green
+#1B4E79,608,Dark Blue
+#AECBD4,609,Light Blue / Green
+#94D5E6,610,Light Blue / Green
+#88B7CA,611,Pale Blue / Green
+#00A7CE,612,Medium Blue / Green
+#0093C2,613,Blue / Green
+#4EA6D8,614,Light Blue
+#0067AD,615,Medium Blue
+#0079B9,616,Medium Blue
+#48A3D1,619,Light Blue
+#007CB8,620,Medium Blue / Green
+#4673AF,621,Medium Blue
+#6EA3B0,622,Medium Green / Blue
+#2E8997,623,Medium Green / Blue
+#006570,624,Medium Green / Blue
+#005A63,625,Dark Green / Yellow
+#003589,626,Blue
+#69A29E,627,Pale Green
+#214CA2,628,Royal Blue
+#203988,629,Royal Blue
+#00758C,630,Blue / Green
+#2D3E95,631,Dark Blue
+#9DB6C7,632,Pale Blue
+#9FC2E2,634,Pale Blue
+#96B2CF,635,Light Blue
+#7298C1,636,Pale Purple
+#4E72A1,637,Medium Blue
+#A2CAE7,638,Pale Blue
+#6EA2DA,639,Medium Blue
+#547CC5,641,Light Blue
+#004890,642,Blue
+#253875,643,Dark Blue
+#1D317F,645,Royal Blue
+#29285B,646,Dark Purple
+#B3C4DC,647,Light Blue
+#6E88BA,648,Pale Blue
+#3B698E,649,Medium Blue
+#9FBCDE,650,Light Blue
+#7695D0,651,Medium Purple
+#426CB4,652,Medium Purple
+#5373A3,653,Medium Purple
+#3B5C8F,654,Medium Purple
+#1A457D,655,Blue
+#22335B,656,Navy
+#193369,657,Dark Purple / Navy
+#5F88C9,658,MediumBlue
+#0961B5,659,Blue
+#4369B5,661,Medium Purple
+#235D8A,662,Medium Blue
+#333D5C,665,Dark Grey / Blue
+#009FCD,667,Medium Blue / Green
+#87A6B5,668,Pale Blue
+#55788B,669,Medium Blue / Green
+#2D5B6A,670,Dark Blue / Green
+#2B2A38,671,Dark Navy
+#135174,672,Dark Blue
+#262A43,673,Dark Purple
+#20342F,674,Dark Green
+#27246D,675,Purple
+#9FACD5,677,Light Purple
+#0C2F5C,678,Blue
+#7185AD,679,Pale Purple
+#566299,680,Medium Blue
+#1E4D8A,682,Dark Blue
+#00407E,683,Light Blue / Green
+#52BAD0,684,Medium Blue / Green
+#183F62,689,Dark Blue
+#2B2636,700,Dark Grey
+#252440,701,Dark Purple
+#2D2739,702,Dark Purple
+#21222C,703,Black
+#26236D,801,Purple
+#CFA5CC,804,Light Pink
+#B97EBA,805,Purple
+#8D599F,806,Medium Purple
+#C095C9,807,Purple
+#B461A0,811,Medium Purple
+#761157,813,Dark Purple
+#6F1F68,814,Dark Purple
+#760049,815,Dark Pink
+#572162,817,Purple
+#54315C,818,Dark Purple
+#736B8B,819,Medium Purple
+#927BBA,822,Pale Purple
+#704492,824,Purple
+#653784,826,Purple
+#512971,827,Purple
+#857690,830,Pale Purple
+#99A4CE,842,Light Purple
+#7589BD,843,Medium Purple
+#A5A1D3,845,Light Purple
+#4D57A4,847,Medium Purple
+#3B3A77,848,Purple
+#B29ECC,849,Pale Purple
+#8C80BD,850,Light Purple
+#7064A3,851,Medium Purple
+#362160,852,Purple
+#A15395,853,Medium Purple
+#7964A6,854,Light Purple
+#6173B4,855,Medium Purple
+#4E61AB,856,Light Blue
+#B6BFD4,857,Light Grey
+#4F3380,862,Dark Purple
+#4E3885,863,Purple
+#212125,900,Black
+#9298A1,902,Pale Grey
+#747F8E,903,Pale Grey / Blue
+#505A62,904,Dark Grey / Blue
+#70756E,905,Medium Grey / Green
+#B5C0C3,906,Light Green
+#B5BFC8,907,Pale Purple
+#7D848C,908,Grey
+#4F5E7B,909,Dark Grey / Blue
+#A0A5AE,910,Medium Grey
+#3F3F50,911,Dark Grey / Blue
+#6A6460,913,Medium Grey / Green
+#738CA0,915,Medium Blue
+#797978,916,Medium Grey
+#91AFC8,917,Pale Blue
+#6A6F80,918,Grey
+#747985,919,Medium Grey
+#37363E,920,Black
+#8D9E81,921,Pale Green
+#707C57,922,Medium Green / Yellow
+#79869A,923,Medium Grey / Blue
+#4C597E,924,Grey / Blue
+#515430,925,Green / Yellow
+#919281,927,Pale / Grey
+#666761,928,Medium Grey
+#A3A59D,929,Pale Grey
+#B6B9B2,930,Light Grey / Green
+#898988,931,Medium Grey
+#54575A,933,Dark Grey
+#403B3A,935,Black
+#5F7E87,936,Pale Green / Blue
+#3F6A7B,937,Medium Green / Blue
+#A5ADB7,939,Medium Grey
+#575563,940,Dark Grey
+#829382,941,Pale Green
+#9399A7,942,Medium Grey
+#3A3940,943,Black
+#ACB0B9,944,Medium Grey
+#525762,945,Dark Grey
+#C1C5D3,946,Light Purple
+#ADADBD,947,Light Purple
+#A4A4B8,948,LightPurple
+#908C9D,950,Medium Purple
+#78778B,951,Medium Grey / Blue
+#635B70,952,Dark Grey / Blue
+#AFB7C7,953,Medium Grey
+#67707D,955,Grey
+#797981,965,Cool Grey
+#5B636F,966,Grey
+#7D7F8D,967,Grey
+#5E6D84,968,Dark Grey / Blue
+#5E3226,1008,Dark Brown
+#8EC175,1013,Medium Green
+#0054A1,1015,Blue
+#B40339,1016,Dark Red / Orange
+#423888,1020,Purple
+#919192,1021,Pale Grey
+#2C307F,1022,Purple
+#E8DDAB,1026,Light Yellow / Orange
+#545140,1027,Dark Grey / Green
+#CC5866,1028,Medium Orange / Red
+#80532C,1033,Brown
+#25395C,1036,Dark Blue
+#ED7E6C,1037,Medium Orange
+#7E2D73,1038,Dark Purple
+#123846,1039,Dark Blue
+#2D3147,1042,Dark Purple
+#00525F,1046,Blue / Green
+#9C006F,1047,Medium Purple
+#483651,1060,Dark Purple
+#C8AD70,1062,Light Orange
+#C30040,1063,Dark Red
+#BA0027,1066,Red
+#0087B1,1068,Blue / Green
+#B2287A,1069,Dark Pink
+#8D8989,1071,Medium Grey
+#876F4E,1072,Medium Brown
+#825F56,1073,Medium Brown
+#602546,1076,Medium Purple
+#006D5C,1078,Dark Green
+#006763,1079,Dark Blue / Green
+#B5892E,1080,Orange / Brown
+#007C79,1081,Light Green / Blue
+#6B186D,1082,Dark Purple
+#3B2055,1084,Dark Purple
+#C7868D,1087,Light Pink
+#3C7369,1088,Dark Green / Blue
+#7A0C2A,1089,Red
+#2D1E5F,1090,Dark Purple / Navy
+#006441,1092,Green
+#2E2158,1097,Dark Purple / Navy
+#0A347F,1098,Royal Blue
+#00587C,1099,Blue
+#2E4C45,1391,Dark Green / Blue
+#C60F00,2210,Warm Red

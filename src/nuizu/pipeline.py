@@ -184,8 +184,11 @@ def convert_photo_to_embroidery(
     # 3. Color quantization
     log(f"[3/7] Quantizing to {n_colors} colors (palette: {thread_brand})...")
     custom_pal = None
+    palette_full = None  # (R, G, B, comment, width_mm) のフルデータ
     if use_thread_palette:
-        custom_pal = get_palette(thread_brand)
+        palette_full = get_palette(thread_brand)
+        # quantize_colors は (R, G, B, Name) を期待
+        custom_pal = [(r, g, b, n) for r, g, b, n, _, _cn in palette_full]
 
     max_palette_colors = len(custom_pal) if use_thread_palette else 256
     if strict_colors and requested_n_colors > max_palette_colors:
@@ -258,15 +261,27 @@ def convert_photo_to_embroidery(
     pattern = EmbroideryPattern(name=os.path.splitext(
         os.path.basename(image_path))[0])
 
+    # Build palette lookup: RGB -> (comment, width_mm, catalog_number)
+    pal_info: dict[tuple[int, int, int], tuple[str, float, str]] = {}
+    if palette_full is not None:
+        for r, g, b, comment, w, cn in palette_full:
+            pal_info[(r, g, b)] = (comment, w, cn)
+
+    def _make_thread_color(rgb: tuple, index: int) -> ThreadColor:
+        comment, w, cn = pal_info.get(rgb, ("", 0.0, ""))
+        return ThreadColor(
+            r=rgb[0], g=rgb[1], b=rgb[2],
+            name=comment or f"Color {index}",
+            width_mm=w,
+            catalog_number=cn,
+        )
+
     # Build color map
     color_set = {}
     for region in regions:
         rgb = region.color_rgb
         if rgb not in color_set:
-            color_set[rgb] = ThreadColor(
-                r=rgb[0], g=rgb[1], b=rgb[2],
-                name=f"Color {len(color_set) + 1}",
-            )
+            color_set[rgb] = _make_thread_color(rgb, len(color_set) + 1)
 
     if strict_colors:
         # Ensure exact palette count even when segmentation drops tiny regions.
@@ -274,20 +289,14 @@ def convert_photo_to_embroidery(
             if len(color_set) >= requested_n_colors:
                 break
             if rgb not in color_set:
-                color_set[rgb] = ThreadColor(
-                    r=rgb[0], g=rgb[1], b=rgb[2],
-                    name=f"Color {len(color_set) + 1}",
-                )
+                color_set[rgb] = _make_thread_color(rgb, len(color_set) + 1)
 
         if len(color_set) < requested_n_colors and custom_pal is not None:
             for entry in custom_pal:
                 rgb = tuple(entry[:3])
                 if rgb in color_set:
                     continue
-                color_set[rgb] = ThreadColor(
-                    r=rgb[0], g=rgb[1], b=rgb[2],
-                    name=f"Color {len(color_set) + 1}",
-                )
+                color_set[rgb] = _make_thread_color(rgb, len(color_set) + 1)
                 if len(color_set) >= requested_n_colors:
                     break
 
@@ -348,7 +357,10 @@ def convert_photo_to_embroidery(
             fill_contour = apply_pull_compensation(fill_contour, comp_mm)
 
         skip_fill = False
-        effective_spacing = fill_density
+        # 糸ごとの width_mm があればそちらを使う
+        tc = color_set.get(region.color_rgb)
+        effective_spacing = (tc.width_mm if tc and tc.width_mm > 0
+                             else fill_density)
 
         # Skip fill for regions too thin to hold even 2 fill rows.
         # These get outline only, avoiding broken/dashed fill artifacts.
@@ -529,6 +541,17 @@ def generate_preview(pattern: EmbroideryPattern,
     colors = pattern.colors
     prev_x, prev_y = None, None
 
+    def _thread_px_for(color_idx: int) -> int:
+        """糸ごとの width_mm からピクセル幅を算出する。"""
+        if thread_width_mm <= 0:
+            return 1
+        if colors:
+            c = colors[min(color_idx, len(colors) - 1)]
+            w = c.width_mm if c.width_mm > 0 else thread_width_mm
+        else:
+            w = thread_width_mm
+        return max(1, _math.ceil(w * scale))
+
     for stitch in pattern.stitches:
         if stitch.stitch_type == StitchType.COLOR_CHANGE:
             current_color_idx += 1
@@ -553,7 +576,8 @@ def generate_preview(pattern: EmbroideryPattern,
             else:
                 bgr = (0, 0, 0)
 
-            cv2.line(img, (prev_x, prev_y), (px, py), bgr, thread_px,
+            cur_thread_px = _thread_px_for(current_color_idx)
+            cv2.line(img, (prev_x, prev_y), (px, py), bgr, cur_thread_px,
                      cv2.LINE_AA)
 
         prev_x, prev_y = px, py

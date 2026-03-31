@@ -13,6 +13,7 @@ dependencies = [
     "pillow",
     "scikit-learn",
     "typer",
+    "pyyaml",
 ]
 
 [project.scripts]

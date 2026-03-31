@@ -1,0 +1,30 @@
+color,number,comment
+#000000,1,Black
+#0000FF,2,Blue
+#00FF00,3,Light Green
+#FF0000,4,Red
+#FF00FF,5,Purple
+#FFFF00,6,Yellow
+#848284,7,Gray
+#0082FF,8,Light Blue
+#00FF84,9,Green
+#FF8200,10,Orange
+#FFA2B5,11,Pink
+#C64100,12,Brown
+#FFFFFF,13,White
+#000084,14,Dark Blue
+#008200,15,Dark Green
+#A50000,16,Dark Red
+#FF797B,17,Light Red
+#840084,18,Dark Purple
+#FF82FF,19,Light Purple
+#C6C300,20,Dark Yellow
+#FFFFA5,21,Light Yellow
+#424142,22,Dark Gray
+#C6C3C6,23,Light Gray
+#E74100,24,Dark Orange
+#FFAE42,25,Light Orange
+#FF597B,26,Dark Pink
+#FFD3D6,27,Light Pink
+#842000,28,Dark Brown
+#E76121,29,Light Brown

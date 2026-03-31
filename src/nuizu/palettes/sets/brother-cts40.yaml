@@ -1,0 +1,244 @@
+# Brother カントリー刺繍糸 40色セット (CTS40)
+# 品番: XE0335-001 / 素材: キュプラ(rayon) / 番手: #40 / 各300m
+# ツヤを抑えたマット仕上げの刺繍糸。
+# https://direct.brother.co.jp/shop/g/gXE0335001/
+threads:
+  - brand: brother-country
+    color: 0
+    thread-width: "#40"
+    material: rayon
+    comment: White
+
+  - brand: brother-country
+    color: 3
+    thread-width: "#40"
+    material: rayon
+    comment: Wistaria Violet
+
+  - brand: brother-country
+    color: 15
+    thread-width: "#40"
+    material: rayon
+    comment: Corn Flower Blue
+
+  - brand: brother-country
+    color: 24
+    thread-width: "#40"
+    material: rayon
+    comment: Deep Rose
+
+  - brand: brother-country
+    color: 25
+    thread-width: "#40"
+    material: rayon
+    comment: Linen
+
+  - brand: brother-country
+    color: 122
+    thread-width: "#40"
+    material: rayon
+    comment: Salmon Pink
+
+  - brand: brother-country
+    color: 126
+    thread-width: "#40"
+    material: rayon
+    comment: Dark Fuchsia
+
+  - brand: brother-country
+    color: 133
+    thread-width: "#40"
+    material: rayon
+    comment: Light Lilac
+
+  - brand: brother-country
+    color: 149
+    thread-width: "#40"
+    material: rayon
+    comment: Red
+
+  - brand: brother-country
+    color: 150
+    thread-width: "#40"
+    material: rayon
+    comment: Light Blue
+
+  - brand: brother-country
+    color: 152
+    thread-width: "#40"
+    material: rayon
+    comment: Flesh Pink
+
+  - brand: brother-country
+    color: 155
+    thread-width: "#40"
+    material: rayon
+    comment: Pink
+
+  - brand: brother-country
+    color: 158
+    thread-width: "#40"
+    material: rayon
+    comment: Carmine
+
+  - brand: brother-country
+    color: 224
+    thread-width: "#40"
+    material: rayon
+    comment: Clay Brown
+
+  - brand: brother-country
+    color: 242
+    thread-width: "#40"
+    material: rayon
+    comment: Khaki
+
+  - brand: brother-country
+    color: 255
+    thread-width: "#40"
+    material: rayon
+    comment: Light Brown
+
+  - brand: brother-country
+    color: 264
+    thread-width: "#40"
+    material: rayon
+    comment: Reddish Brown
+
+  - brand: brother-country
+    color: 322
+    thread-width: "#40"
+    material: rayon
+    comment: Pumpkin
+
+  - brand: brother-country
+    color: 331
+    thread-width: "#40"
+    material: rayon
+    comment: Cream Brown
+
+  - brand: brother-country
+    color: 334
+    thread-width: "#40"
+    material: rayon
+    comment: Harvest Gold
+
+  - brand: brother-country
+    color: 336
+    thread-width: "#40"
+    material: rayon
+    comment: Tangerine
+
+  - brand: brother-country
+    color: 354
+    thread-width: "#40"
+    material: rayon
+    comment: Deep Gold
+
+  - brand: brother-country
+    color: 370
+    thread-width: "#40"
+    material: rayon
+    comment: Cream Yellow
+
+  - brand: brother-country
+    color: 444
+    thread-width: "#40"
+    material: rayon
+    comment: Lime Green
+
+  - brand: brother-country
+    color: 463
+    thread-width: "#40"
+    material: rayon
+    comment: Leaf Green
+
+  - brand: brother-country
+    color: 473
+    thread-width: "#40"
+    material: rayon
+    comment: Dark Olive
+
+  - brand: brother-country
+    color: 483
+    thread-width: "#40"
+    material: rayon
+    comment: Teal Green
+
+  - brand: brother-country
+    color: 485
+    thread-width: "#40"
+    material: rayon
+    comment: Emerald Green
+
+  - brand: brother-country
+    color: 505
+    thread-width: "#40"
+    material: rayon
+    comment: Seacrest
+
+  - brand: brother-country
+    color: 512
+    thread-width: "#40"
+    material: rayon
+    comment: Sky Blue
+
+  - brand: brother-country
+    color: 564
+    thread-width: "#40"
+    material: rayon
+    comment: Electric Blue
+
+  - brand: brother-country
+    color: 575
+    thread-width: "#40"
+    material: rayon
+    comment: Ultramarine
+
+  - brand: brother-country
+    color: 586
+    thread-width: "#40"
+    material: rayon
+    comment: Blue
+
+  - brand: brother-country
+    color: 604
+    thread-width: "#40"
+    material: rayon
+    comment: Lavender
+
+  - brand: brother-country
+    color: 624
+    thread-width: "#40"
+    material: rayon
+    comment: Violet
+
+  - brand: brother-country
+    color: 635
+    thread-width: "#40"
+    material: rayon
+    comment: Purple
+
+  - brand: brother-country
+    color: 706
+    thread-width: "#40"
+    material: rayon
+    comment: Warm Gray
+
+  - brand: brother-country
+    color: 717
+    thread-width: "#40"
+    material: rayon
+    comment: Dark Brown
+
+  - brand: brother-country
+    color: 745
+    thread-width: "#40"
+    material: rayon
+    comment: Pewter
+
+  - brand: brother-country
+    color: 747
+    thread-width: "#40"
+    material: rayon
+    comment: Dark Gray

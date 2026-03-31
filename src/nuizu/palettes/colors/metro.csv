@@ -1,0 +1,169 @@
+color,number,comment
+#FFFFFF,1618,Snow White
+#D8E0D4,1619,Pale Pearl Gray
+#000000,1621,Black
+#F0BAD4,1624,Sugar Pink
+#EDABC2,1636,Carnatio
+#E87AA3,1637,Floral Pink
+#AB035C,1643,Ruby Glint
+#BD3826,1652,Dark Rust
+#CF142B,1654,Candy Apple
+#970130,1656,Cranberry 3
+#A60F38,1658,Atom Red
+#F5E2E3,1662,Oyster
+#FAABB0,1664,Emily Pink
+#EDCCBA,1667,Chiffon
+#FF8F7E,1669,Coral Reef
+#FF5A46,1670,Coral
+#DE8703,1680,Karat
+#D94F00,1682,Orange
+#DE3B21,1685,Sunkist
+#EDEB87,1704,Lemon Drop
+#F5E814,1706,Daffodil
+#FCC917,1708,Manila
+#F7B512,1709,Orange
+#F7A30A,1710,Marigold
+#FCC918,1711,Manila
+#F7A30B,1712,Marigold
+#00946C,1722,Peppermint
+#009687,1723,Parrot
+#007D69,1724,Shutter Green
+#CFE89C,1742,Pistachio Nut
+#A3D963,1743,Apple Green
+#61BF1A,1744,Medium Green
+#007336,1751,Green
+#006338,1754,Dark Green
+#CFE89B,1761,Pistachio Nut
+#A3D964,1763,Apple Green
+#6B8F00,1764,Meadow Green
+#4D590D,1766,Palmetto
+#D1E3E3,1772,Sapphire Medium Light
+#ADC07C,1774,Lettuce Green
+#BFD1D6,1790,Ocean Bleu Light
+#7EA8C0,1799,Pale Purple
+#73B5E0,1800,Ultra Blue
+#B5DEE3,1802,Bleached Aqua
+#006EC7,1804,Dark Blue
+#ABCCD9,1806,Crystal Blue
+#9CBAD6,1815,Cerulean
+#003896,1821,Flag Blue
+#003082,1823,Blue Ribbon
+#1F2B39,1825,Ebony Blue
+#C7D9E6,1838,Cadet Blue
+#00B0AB,1840,Ocean Blue
+#00858A,1841,M. D. Green
+#00877D,1842,Navajo Turquoise
+#B3C7E3,1845,Light Blue
+#C7E6E3,1846,Soothing Sea
+#B3C7E2,1859,Azure Blue
+#D1E4D4,1860,Blue Glass
+#A478AB,1863,Afterglow
+#59178A,1865,Dark Purple
+#1C1475,1867,Royal
+#A683DD,1869,Lavender
+#8C42AD,1871,Iris Blue
+#6A3280,1873,Dahlia
+#B591D6,1875,Pale Purple
+#821C6C,1885,Grape Wine
+#CBB18A,1903,Almond Buff
+#F1EED0,1907,Eggshell
+#E4A77F,1914,Bamboo
+#C7BFB0,1922,Gray Morn
+#BA9E66,1924,Parsnip
+#994F14,1925,Date
+#54401F,1926,Brown
+#877882,1940,Gray Ridge
+#EDC282,1942,Spun Silk
+#AB7305,1945,Ginger
+#D7B064,1947,Gold
+#2A4F31,1948,Dark Green
+#BF940D,1950,Brass
+#D7D9E4,1961,PALE Cloud Gray
+#B5BAB6,1964,Heather Grey
+#8C8F91,1965,Steel Gray medium
+#7A7A78,1966,Medium Grey
+#CFC4BA,1969,Moonstruck
+#1C2220,1973,Caviar
+#96877D,1975,Light Brown
+#BD3827,1980,Dark Rust
+#C9B582,1981,Antique Lace
+#373C35,1998,Beluga
+#5D5D28,2003,Green
+#404714,2007,Green
+#273123,2088,Midnight Green
+#004730,2089,Grass Green
+#ADDBE3,2096,Light Blue
+#9670A3,2104,Hyacinth
+#330D73,2110,Purple Maze
+#C25E03,2124,Bright Rust
+#DE7008,2126,Sunburst
+#6B4A1C,2142,Sand Dune
+#DE87B5,2153,Azalea Pink
+#C7BFAF,2154,Gray Morn
+#B8698C,2155,Medium Purple
+#B83847,2161,Develish Pink
+#990070,2170,Medium Purple
+#00A3E0,2190,Mid Windsor
+#36578C,2193,Imperial Blue
+#DE1F82,2209,Ruby Glint
+#FF5B6B,2231,Pink
+#655112,2239,Sand Dune
+#59471C,2241,Army Green
+#A29068,2254,Olive Drab
+#BD9C83,2255,Warm Taupe
+#8F7B5F,2256,Doe
+#A9DD76,2259,Spruce
+#FE3E16,2288,Vermilion
+#6B173B,2295,Red Licorice
+#612147,2296,Medium Purple
+#254553,2311,Dark Blue
+#003C47,2313,Deep Slate Blue
+#004544,2317,Green
+#E8EB38,2324,Pale Yellow
+#FF784D,2327,Sunset Orange
+#AF7E26,2333,Palomino
+#471A6B,2336,Dark Purple
+#A9DD77,2337,Spruce
+#FF6790,2340,Dark Pink
+#311B27,2341,Dark Brown
+#523834,2342,Dark Oak
+#CD0040,2357,Rose / Very Dark
+#F65B8B,2360,Neon Pink
+#1A272A,2371,Moonless Night
+#FF607F,2374,Dusty Rose
+#8A0053,2409,Cranberry
+#E17274,2444,Shell Pink
+#FF5B6C,2458,Pink
+#FF8F7F,2461,Coral Reef
+#FFAB00,2469,Orange
+#F65B8A,2471,Neon Pink
+#FF678F,2472,Dark Pink
+#FFA300,2478,Bright Orange
+#FF8442,2480,Orange
+#FF5A00,2484,Burnt Orange
+#F4E5B3,2486,Wheat
+#FFFF00,2487,Gold / Yellow
+#FFF900,2488,Canary
+#E4A780,2501,Bamboo
+#FFE700,2505,Canary
+#FFCD00,2507,Copper
+#967D39,2509,Foliage Green
+#7D5C39,2510,Sand Dune
+#00936D,2512,Peppermint
+#A8DD76,2513,Spruce
+#6BCC5C,2515,DK Mint
+#002029,2525,Ivy
+#4E311F,2581,Dark Brown
+#821C6B,2645,Grape Wine
+#353B42,2731,Black
+#91857A,2747,Medium Green / Yellow
+#615D56,2749,Black Chrome
+#D1AF81,2780,Ashley Gold
+#263E52,2797,Dark Denim
+#9D7D92,2813,Very Grape
+#9E7D92,2814,Very Grape
+#A67784,2821,Light Purple
+#9E7D91,2834,Very Grape
+#FF8D66,2865,Apricot Light
+#46223F,2901,Deep Slate Gray
+#471A6C,2931,Dark Purple

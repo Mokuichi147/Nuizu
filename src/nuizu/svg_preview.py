@@ -112,12 +112,23 @@ def generate_svg_preview(
         c = colors[0]
         current_color_hex = f"#{c.r:02x}{c.g:02x}{c.b:02x}"
 
+    def _current_stroke_width() -> float:
+        """現在の糸色に応じた stroke-width を返す。"""
+        if thread_width_mm <= 0:
+            return 0.5
+        if colors and current_color_idx < len(colors):
+            w = colors[current_color_idx].width_mm
+            if w > 0:
+                return max(0.5, w * scale)
+        return max(0.5, thread_width_mm * scale)
+
     def flush_group():
         nonlocal current_group_lines
         if current_group_lines:
+            sw = _current_stroke_width()
             lines.append(
                 f'<g stroke="{current_color_hex}" '
-                f'stroke-width="{max(0.5, thread_width_mm * scale):.2f}" '
+                f'stroke-width="{sw:.2f}" '
                 f'stroke-linecap="round" '
                 f'opacity="{stitch_opacity}" '
                 f'filter="url(#threadShadow)">'

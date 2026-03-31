@@ -30,6 +30,7 @@ class ThreadColor:
     b: int
     name: str = ""
     catalog_number: str = ""
+    width_mm: float = 0.0  # 0 = グローバルのデフォルトを使用
 
     def to_tuple(self) -> Tuple[int, int, int]:
         return (self.r, self.g, self.b)

@@ -9,43 +9,6 @@ from sklearn.cluster import MiniBatchKMeans
 from PIL import Image
 from typing import List, Tuple
 
-# Common embroidery thread palette (subset of popular thread colors)
-# Format: (R, G, B, Name)
-THREAD_PALETTE = [
-    (0, 0, 0, "Black"),
-    (255, 255, 255, "White"),
-    (200, 0, 0, "Red"),
-    (0, 100, 0, "Dark Green"),
-    (0, 0, 180, "Blue"),
-    (255, 200, 0, "Yellow"),
-    (255, 127, 0, "Orange"),
-    (128, 0, 128, "Purple"),
-    (255, 105, 180, "Pink"),
-    (139, 69, 19, "Brown"),
-    (128, 128, 128, "Gray"),
-    (192, 192, 192, "Light Gray"),
-    (0, 128, 128, "Teal"),
-    (0, 200, 0, "Green"),
-    (135, 206, 235, "Sky Blue"),
-    (0, 0, 100, "Navy"),
-    (178, 34, 34, "Dark Red"),
-    (255, 215, 0, "Gold"),
-    (245, 222, 179, "Wheat"),
-    (210, 180, 140, "Tan"),
-    (255, 160, 122, "Light Salmon"),
-    (144, 238, 144, "Light Green"),
-    (230, 230, 250, "Lavender"),
-    (255, 228, 196, "Bisque"),
-    (64, 64, 64, "Dark Gray"),
-    (160, 82, 45, "Sienna"),
-    (205, 133, 63, "Peru"),
-    (107, 142, 35, "Olive Green"),
-    (70, 130, 180, "Steel Blue"),
-    (220, 20, 60, "Crimson"),
-    (148, 103, 189, "Medium Purple"),
-    (255, 69, 0, "Orange Red"),
-]
-
 
 def rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
     """Convert RGB array to CIELAB color space via XYZ.
@@ -119,8 +82,12 @@ def quantize_colors(image: np.ndarray, n_colors: int,
     # Convert to LAB for perceptually uniform clustering
     pixels_lab = rgb_to_lab(pixels)
 
-    # Use custom palette if provided
-    thread_pal = custom_palette if custom_palette else THREAD_PALETTE
+    # Use custom palette if provided; fall back to generic CSV palette.
+    if custom_palette:
+        thread_pal = custom_palette
+    else:
+        from .palettes import get_palette
+        thread_pal = [(r, g, b, n) for r, g, b, n, *_ in get_palette("generic")]
 
     # K-means clustering in LAB space
     n_colors = min(n_colors, len(thread_pal) if use_thread_palette else 256)

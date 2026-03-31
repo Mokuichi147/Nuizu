@@ -1,0 +1,114 @@
+# Brother ウルトラポス 新色22色セット (ETS22)
+# 品番: X81287-001 / 素材: ポリエステル / 番手: #40 / 各300m
+# ETS39に含まれない新色。ETS39と組み合わせて全61色になる。
+# https://direct.brother.co.jp/shop/g/gX81287001/
+threads:
+  - brand: brother
+    color: 126
+    thread-width: "#40"
+    comment: Pumpkin
+
+  - brand: brother
+    color: 202
+    thread-width: "#40"
+    comment: Lemon Yellow
+
+  - brand: brother
+    color: 206
+    thread-width: "#40"
+    comment: Harvest Gold
+
+  - brand: brother
+    color: 330
+    thread-width: "#40"
+    comment: Russet Brown
+
+  - brand: brother
+    color: 333
+    thread-width: "#40"
+    comment: Amber Red
+
+  - brand: brother
+    color: 337
+    thread-width: "#40"
+    comment: Reddish Brown
+
+  - brand: brother
+    color: 348
+    thread-width: "#40"
+    comment: Khaki
+
+  - brand: brother
+    color: 399
+    thread-width: "#40"
+    comment: Warm Gray
+
+  - brand: brother
+    color: 406
+    thread-width: "#40"
+    comment: Ultramarine
+
+  - brand: brother
+    color: 415
+    thread-width: "#40"
+    comment: Peacock Blue
+
+  - brand: brother
+    color: 509
+    thread-width: "#40"
+    comment: Leaf Green
+
+  - brand: brother
+    color: 517
+    thread-width: "#40"
+    comment: Dark Olive
+
+  - brand: brother
+    color: 519
+    thread-width: "#40"
+    comment: Olive Green
+
+  - brand: brother
+    color: 542
+    thread-width: "#40"
+    comment: Seacrest
+
+  - brand: brother
+    color: 607
+    thread-width: "#40"
+    comment: Wistaria Violet
+
+  - brand: brother
+    color: 613
+    thread-width: "#40"
+    comment: Violet
+
+  - brand: brother
+    color: 804
+    thread-width: "#40"
+    comment: Lavender
+
+  - brand: brother
+    color: 807
+    thread-width: "#40"
+    comment: Carmine
+
+  - brand: brother
+    color: 808
+    thread-width: "#40"
+    comment: Deep Green
+
+  - brand: brother
+    color: 812
+    thread-width: "#40"
+    comment: Cream Yellow
+
+  - brand: brother
+    color: 817
+    thread-width: "#40"
+    comment: Gray
+
+  - brand: brother
+    color: 869
+    thread-width: "#40"
+    comment: Royal Purple

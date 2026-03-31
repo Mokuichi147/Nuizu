@@ -1,0 +1,108 @@
+color,number,comment
+#000000,P101,Black
+#FFFFFF,P102,White
+#FFF1D7,P110,Off White
+#F2FBD7,P115,Sand
+#EDE3B8,P120,Lt Beige
+#C6AE9D,P121,Beige
+#C4BB9D,P122,SandStone
+#B7AC86,P123,Beachcomber
+#D6C29E,P125,Dusky Goldenrod
+#BFAC6A,P126,Twilight Harvest
+#78603F,P127,Brown
+#E2C57E,P130,Sienna
+#B98A44,P131,Sienna Rose
+#A36814,P135,Sienna Brass
+#915735,P140,Light Cocoa
+#5E3433,P143,Burnished Eggplant
+#482626,P145,Spanish Roast
+#F8F4D3,P195,Pearled Gold
+#F2ECB6,P196,Golden Sand
+#F7F4C9,P200,Pearled bronze
+#FDECA8,P201,Pale Gold
+#FBF259,P205,Buttercup
+#F9E926,P206,Bright gold
+#E6C44D,P207,Goldenrod
+#E2B30E,P210,Brass
+#F8C272,P211,Brass Rose
+#D9A603,P212,Dusky Brass
+#DA630C,P215,Cayenne
+#DD790B,P220,Cinnamon
+#A22F03,P221,Orange Glory
+#BEA80C,P224,Antique Bronze
+#BE9A0C,P225,Antique Gold
+#9E810A,P226,Pickled Olive
+#CDF3A7,P300,Cool Mint
+#A8EB65,P305,California Lime
+#73BE0C,P306,Vivid Mint
+#C2DA70,P307,Grey Moss
+#60731E,P308,Deep Moss
+#509526,P310,New Pine
+#4F5B1A,P312,Lilypad Green
+#49601A,P313,Palmetto
+#324211,P314,Black Pine
+#C4D257,P315,Spring Fern
+#9C8B29,P316,Olive
+#877823,P320,Parsley
+#62681A,P325,Golden Pine
+#E1F9CC,P400,Frosted Wintergreen
+#ACC774,P401,Pastoral Green
+#56CB80,P405,Deep Wintergreen
+#6CAD14,P406,Parrot Green
+#335909,P407,Christmas Fir
+#D1FAE6,P408,Morning Cyan
+#83C2E9,P409,Dusky Cyan
+#348B71,P410,Mountain Lake
+#266F66,P411,Lake Shadows
+#308168,P415,Lake Forest
+#164B45,P416,Midnight Lake
+#E1F7F4,P420,Winter Morning
+#D0F0FD,P421,Pearled Coneflower
+#CAD5DD,P422,winter Haze
+#757886,P423,Russina Blue
+#686B77,P424,Charcoal Blue
+#ACD3DF,P425,Summer morning
+#30697A,P426,Harbor
+#8399BA,P427,Cornflower
+#5C97C2,P428,Dusky Harbor
+#27415C,P429,Harbor Twilight
+#2E4172,P430,Royal Blue
+#455165,P431,Suskty Navy
+#3F3C60,P435,Deep Navy
+#FDE8EC,P500,Frosted Rose
+#FABEBF,P501,Rose
+#FCD8D8,P505,Pearled Rose
+#F79BC5,P506,Tea Rose
+#F18BDD,P507,Vivid Rose
+#E69F9B,P510,Salmon Rose
+#B12597,P515,Dusty Fuschia
+#C10D71,P520,Light Rose
+#D50000,P525,Paprika Red
+#9B0000,P526,Cherrywood Red
+#7E0A41,P530,Dusty Burgundy
+#6F0939,P531,Burgandy
+#BC0E61,P535,Pearld Burgandy
+#560741,P540,Syrah
+#FCE4AD,P600,Blonde
+#FEDABC,P605,Platinum Rose
+#FDC9A6,P606,Dusty Salmon
+#FAB796,P607,Pearled Salmon
+#F8A278,P610,Salmon
+#FF8080,P612,Vivid Salmon
+#F4BBC4,P613,Light Mauve
+#B8A1A9,P695,Light Lilac
+#8D758F,P696,Antique Lilac
+#9B888B,P697,Silver Lilac
+#CF9AB3,P700,Lilac
+#9666A8,P701,Twilight Lilac
+#7D5EA8,P702,Lupine
+#84467A,P703,Deep Violet
+#633C68,P704,Royal Eggplant
+#5B437C,P705,Twilight Lupine
+#DCDCDB,P800,Platinum
+#D9E8D7,P801,Quartz
+#C6BBB9,P802,Titanium
+#BBBBBB,P803,Blue Titanium
+#9C9C92,P805,Anitque Platinum
+#858578,P810,Hematite
+#57504F,P815,Twilight

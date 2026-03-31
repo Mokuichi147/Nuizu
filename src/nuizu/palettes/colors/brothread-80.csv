@@ -1,0 +1,79 @@
+color,number,comment
+#F4F4F4,1,White
+#000000,2,Black
+#C5A658,3,Gold
+#CA4479,201,Pink
+#BF3C28,202,Vermillion
+#CF6126,203,Orange
+#E1DF27,204,Yellow
+#351708,205,Dark Brown
+#1D7E4F,206,Bright Green
+#132769,207,Blue
+#8C4986,208,Purple
+#9E7DB3,209,Pale Violet
+#D6D48C,210,Pale Yellow
+#E29DA8,211,Pale Pink
+#D09B73,212,Peach
+#9A8F68,213,Beige
+#774C34,214,Brown
+#641125,215,Wine Red
+#A3B7D0,216,Pale Sky
+#52B9C0,217,Sky
+#40B740,218,Yellow Green
+#2A4228,219,Olive Green
+#CFD4D7,220,Silver Grey
+#5A6666,221,Grey
+#2C477C,222,Ocean Blue
+#B09486,223,Beige Gray
+#BC965C,224,Bamboo
+#C72A1D,225,Red
+#2B552B,226,Green
+#7DB9A2,227,Pale Aqua
+#9BC6CE,228,Baby Blue
+#437788,229,Powder Blue
+#507292,230,Bright Blue
+#284C54,231,Slate Blue
+#08103E,232,Navy Blue
+#D28F89,233,Salmon Pink
+#E56051,234,Coral
+#B93C2A,235,Burnt Orange
+#C49672,236,Cinnamon
+#6C6944,237,Umber
+#D1C579,238,Blond
+#D9B53C,239,Sunflower
+#B28AAC,240,Orchid Pink
+#9D1E6D,241,Peony Purple
+#581942,242,Burgundy
+#490957,243,Royal Purple
+#751522,244,Cardinal Red
+#84AF82,245,Opal Green
+#5C683A,246,Moss Green
+#517125,247,Meadow Green
+#11341A,248,Dark Green
+#4B9580,249,Aquamarine
+#198874,250,Emerald Green
+#19745D,251,Peacock Green
+#4E5155,252,Dark Grey
+#D5D4C1,253,Ivory White
+#915125,254,Hazel
+#9D6D24,255,Toast
+#855B69,256,Salmon
+#624422,257,Cocoa Brown
+#403019,258,Sienna
+#2F2009,259,Sepia
+#2D0E15,260,Dark Sepia
+#4E2782,261,Violet Blue
+#0F1B6B,262,Blue Ink
+#105EA0,263,Sola Blue
+#87C943,264,Green Dust
+#B62F61,265,Crimson
+#AF417A,266,Floral Pink
+#6A3249,267,Wine
+#383320,268,Olive Drab
+#375D2C,269,Meadow
+#B3B73F,270,Mustard
+#AB7D30,271,Yellow Ocher
+#987927,272,Old Gold
+#CE822C,273,Honeydew
+#D5A059,274,Tangerine
+#C6B333,275,Canary Yellow

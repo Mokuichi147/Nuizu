@@ -1,0 +1,121 @@
+color,number,comment
+#FFFFFF,1-1,White
+#591717,1-10,Brown
+#D8CDD4,1-2,Grey
+#E63C66,1-3,Pink
+#6D8448,1-4,Lt. Olive
+#FFD23C,1-5,Yellow
+#000000,1-6,Black
+#5E8CB0,1-7,Mid Blue
+#FF0003,1-8,Red
+#297A1E,1-9,Green
+#A2FBE6,10-1,Pacific Mist
+#284346,10-10,Ocean Depths
+#B8E7CA,10-2,Mint
+#95F4DB,10-3,Aqua
+#31D6E3,10-4,Capri
+#468C91,10-5,Lagoon
+#1597AE,10-6,Kingfisher
+#338E67,10-7,Lido
+#286F44,10-8,Tropical Green
+#226064,10-9,Deep Atlantic
+#FFD2DC,11-1,Delicate Mauve
+#3F3566,11-10,Cassis
+#E1BAE9,11-2,Pale Lilac
+#9F6B9C,11-3,Lilac
+#C466A8,11-4,Lavender
+#974C94,11-5,Violet
+#BD4B97,11-6,Clematis
+#5D3B7B,11-7,Imperial Purple
+#8E5FC4,11-8,Amethyst
+#813A7E,11-9,Deep Violet
+#FEF6C4,12-1,Pale Lemon
+#D65C30,12-10,Marigold
+#F8BB55,12-2,Mimosa
+#FBFB42,12-3,Lime
+#F9D271,12-4,Daffodil
+#D79B60,12-5,Sunkissed
+#F5B422,12-6,Golden Lights
+#FF7C1C,12-7,Soleil
+#E1481C,12-8,Golden Glory
+#D38347,12-9,Sunburst
+#E8DDC0,2-1,Cream
+#802426,2-10,Burgundy
+#E38246,2-2,Gold
+#B47253,2-3,Light Brown
+#B42D30,2-4,Orange
+#A13F7D,2-5,Purple
+#6A7073,2-6,Pewter
+#0098A0,2-7,Cyan
+#17328E,2-8,Dark Blue
+#3C4E2C,2-9,Olive
+#EDE4D8,3-1,Palest Ivory
+#D3BBD5,3-10,Palest Mauve
+#E8D2A8,3-2,Palest Yellow
+#E6C6B6,3-3,Palest Fawn
+#EBD0CB,3-4,Palest Peach
+#EEC8DC,3-5,Palest Pink
+#DCD8E1,3-6,Palest Grey
+#D1D8E7,3-7,Palest Blue
+#CEFAF4,3-8,Palest Aqua
+#9BB685,3-9,Palest Green
+#B6C8E1,4-1,Light Blue
+#12113B,4-10,Navy Blue
+#87A0D4,4-2,Powder Blue
+#7277C7,4-3,Sky Blue
+#3E5F97,4-4,Slate Blue
+#55577A,4-5,Storm Blue
+#262A5C,4-6,Denim
+#0A4B8C,4-7,Petrel Blue
+#111B5E,4-8,Imperial Blue
+#0E2272,4-9,Royal Blue
+#E67850,5-1,Copper
+#440100,5-10,Dark Chocolate
+#D76B3C,5-2,Golden Brown
+#6E2819,5-3,Tan
+#742514,5-4,Bark
+#4B1B12,5-5,Dark Oak
+#820000,5-6,Russet
+#501412,5-7,Mahogany
+#785436,5-8,Mushroom
+#5B3C11,5-9,Khaki
+#F8BD9B,6-1,Light Salmon
+#E02F34,6-10,Antique Red
+#F38A67,6-2,Salmon
+#F25238,6-3,Tangerine
+#E69178,6-4,Blush
+#B85A3C,6-5,Bronze
+#E82925,6-6,Scarlet
+#CA2017,6-7,Rust
+#D20414,6-8,Carmine
+#E7001C,6-9,Ruby
+#90D682,7-1,Light Jade
+#0B6020,7-10,Dark Green
+#9EA446,7-2,Pistachio
+#AAC93C,7-3,Fresh Green
+#4B9451,7-4,Sage
+#406040,7-5,Teal
+#368F34,7-6,Bright Green
+#297642,7-7,Jade
+#3A823C,7-8,Leaf Green
+#1E9129,7-9,Emerald
+#F5C0C8,8-1,Sugar Pink
+#952450,8-10,Raspberry
+#FAAABE,8-2,Petal Pink
+#FA86A0,8-3,Rose Pink
+#D06690,8-4,Passion Pink
+#BE3455,8-5,Dusky Rose
+#F16985,8-6,Light Cerise
+#EF5B6F,8-7,Dusky Pink
+#DC004A,8-8,Cerise
+#FF0076,8-9,Fuschia
+#F4F1EC,9-1,Platinum
+#242436,9-10,Seal
+#B9A4B7,9-2,Silver Fox
+#B0B0BB,9-3,Sleet Grey
+#747992,9-4,Silver Blue
+#968C8E,9-5,Silver Moon
+#8A7D66,9-6,Willow
+#665366,9-7,Dark Grey
+#56536C,9-8,Steel
+#4B4750,9-9,Midnight

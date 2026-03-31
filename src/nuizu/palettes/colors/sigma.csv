@@ -1,0 +1,151 @@
+color,number,comment
+#4B4884,S1031,Deep Violet
+#EDEDD2,S1140,Light Natural
+#F3D8A8,S1145,Wheat
+#C8BE96,S1148,Desert Sand
+#243A7D,S1163,Egyptian Blue
+#86BE4E,S1183,Gecko
+#8E4044,S1241,Burgandy
+#893480,S1323,Med Orchid
+#8C6DAA,S1324,Med Purple
+#B6A36C,S1552,Very Old Gold
+#2E9F76,S1615,Light Spruce
+#98C173,S1619,Paris Green
+#CDCDCD,S1707,Timberwolf
+#2A377E,S2031,Bright Blue
+#006CA5,S2093,Turquoise Blue
+#834455,S2250,Dark Wine
+#D0A44F,S2518,Beige
+#ED9206,S2519,Gold
+#EDEF05,S3001,Med Orange
+#C07A46,S3014,Dark Salmon
+#B43C3C,S3015,Fire Red
+#915F46,S3142,Saddle Brown
+#FFC500,S4117,Yellow Sun
+#A68A68,S4371,Deep Taupe
+#00A4D9,S4419,Sky Blue
+#0B7F85,S4627,Wild Peacock
+#002D1F,S4735,Millard Green
+#11263C,S5552,Dark Blue
+#91B9E2,S5554,Powder Blue
+#429648,S5557,Froggy Green
+#878C8C,S8010,Stone Grey
+#FFFFFF,ST10,White
+#E22D2A,ST101,Silver
+#B8B8B8,ST102,Silver Diamond
+#889186,ST112,Lava Stone
+#737F7F,ST115,Medium Grey
+#565E5A,ST116,Dark Platinum
+#515250,ST117,Charcoal
+#787668,ST118,Badger Grey
+#ED572F,ST135,Pumpkin Orange
+#2EA59C,ST138,Turquoise
+#396276,ST142,Dark Wedgewood
+#000000,ST20,Black
+#EDFF50,ST21,Light Neon Green
+#9B3B40,ST213,Cardinal Red
+#6C3E47,ST216,Maroon
+#BA6E4D,ST253,Rust
+#BB3D2E,ST255,Medium Rust
+#F9DFCF,ST301,Natural Pink
+#FBDED6,ST303,Baby Pink
+#F7CDD5,ST304,Piggy Pink
+#F2AFB4,ST305,Sweet Pink
+#E8418C,ST307,Blushing Pink
+#E77F9D,ST309,Pink
+#F06F8C,ST313,Rose Pink
+#008340,ST317,Green
+#96E845,ST32,Neon Green
+#DF99B6,ST321,Shocking Pink
+#820052,ST325,Ruby
+#FFE756,ST33,Light Neon Orange
+#B1415F,ST333,Garnet
+#C394AE,ST345,Light Purple
+#A86E91,ST347,Medium Purple
+#694169,ST348,Dark Grape
+#E6CFD5,ST376,Pastel Light Pink
+#A8BED7,ST379,Light Baby Blue
+#A0BFD7,ST380,Crystal Blue
+#90A6C6,ST381,Very Light Lavender
+#8FAFC6,ST382,Cornflower
+#B1B8D3,ST383,Lavender
+#416C9B,ST385,Denim
+#7D77AF,ST386,Light Violet
+#FADAF4,ST387,Misty Rose
+#664090,ST390,Grape
+#EAF0F9,ST402,Lt. Weathered Blue
+#A6D8F6,ST403,Baby Blue
+#7B9CB0,ST404,Med Baby Blue
+#648DC7,ST406,Med Pastel Blue
+#3D6AA1,ST409,Blue Raspberry
+#2D4491,ST413,Med Royal Blue
+#143D7A,ST414,Ocean Blue
+#113263,ST415,Med Navy
+#0E1F38,ST423,Dark Navy
+#FF7824,ST43,Med Neon Orange
+#0E1F38,ST432,Bright Sunshine
+#0091A5,ST443,Teal
+#005B63,ST448,Deep Teal
+#466E64,ST448,Deep Teal
+#00474D,ST449,Dark Teal
+#F28DA6,ST46,Neon Pink
+#E5B15C,ST466,Old Gold
+#C70C57,ST47,Neon Orange Pink
+#D5BF9B,ST501,Cream
+#FFD085,ST503,Pale Salmon
+#F6B08E,ST505,Med Peach
+#B3E851,ST506,Pink Salmon
+#F1A236,ST508,Dark Peach
+#6E4337,ST513,Dark Brown
+#D8493E,ST527,Pale Red
+#697698,ST541,Heron Blue
+#FDE896,ST601,Pale Yellow
+#EDE55D,ST602,Pastel Yellow
+#DFA200,ST609,Golden Puppy
+#FDE896,ST612,Buttercup
+#CEB24C,ST616,Treasure Gold
+#AD953E,ST619,Old Gold
+#FEF9EA,ST627,Pale Apricot
+#BD9565,ST628,Tan
+#FDF76C,ST632,Mellow Yellow
+#EDEF05,ST633,Lemon
+#F8C300,ST646,Amber
+#E77817,ST649,Mandarina
+#E66535,ST650,Orange
+#C69632,ST652,Golden Rod
+#98996D,ST653,Light Olive
+#C98300,ST654,Bright Gold
+#007B8D,ST688,Blue-Green
+#004D3D,ST695,Forrest Green
+#007EBA,ST697,Midnight Blue
+#CF0040,ST700,Med Red
+#28438C,ST809,Med Blue
+#D0B478,ST812,Sweet Apricot
+#E5BE6C,ST818,Skin
+#449284,ST825,Jade
+#CFCFCF,ST829,Light Silver
+#DC875E,ST831,Papaya Whip
+#B4705D,ST832,Cooper
+#9B5C4B,ST833,Light Pecan
+#A93121,ST838,Burnt Rust
+#B18B00,ST842,Vegas Gold
+#86462E,ST857,Med Brown
+#614125,ST859,Med Russett
+#B25C31,ST864,Med Copper
+#806A61,ST873,Dark Driftwood
+#634831,ST878,Birch
+#1A0C06,ST891,Dark Chocolate
+#96D5C8,ST903,Sky Blue 2
+#B4DCD8,ST904,Aquamarine
+#AF7D3E,ST905,Golden Brown
+#00A3A0,ST906,Sea Blue
+#00405D,ST913,Deep Sea
+#C9E3C5,ST947,Pastel Mint
+#55AF78,ST949,True Green
+#858325,ST951,Med Olive
+#61601C,ST955,Olive
+#709188,ST961,Light Jade
+#BEDC8C,ST984,Smith Apple
+#BEE678,ST985,Light Lime
+#76C850,ST988,Grass Green
+#356936,ST992,Med Forrest Green
