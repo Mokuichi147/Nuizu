@@ -10,6 +10,72 @@ from PIL import Image
 from typing import List, Tuple
 
 
+def delta_e_2000(lab1: np.ndarray, lab2: np.ndarray) -> np.ndarray:
+    """CIEDE2000 color difference between lab1 and lab2.
+
+    Args:
+        lab1: Array of shape (..., 3) in LAB color space.
+        lab2: Array of shape (..., 3) in LAB color space.
+
+    Returns:
+        Array of ΔE2000 values with shape (...).
+    """
+    L1, a1, b1 = lab1[..., 0], lab1[..., 1], lab1[..., 2]
+    L2, a2, b2 = lab2[..., 0], lab2[..., 1], lab2[..., 2]
+
+    C1 = np.sqrt(a1 ** 2 + b1 ** 2)
+    C2 = np.sqrt(a2 ** 2 + b2 ** 2)
+    C_mean = (C1 + C2) / 2.0
+    C_mean7 = C_mean ** 7
+    G = 0.5 * (1.0 - np.sqrt(C_mean7 / (C_mean7 + 25.0 ** 7)))
+    a1p = a1 * (1.0 + G)
+    a2p = a2 * (1.0 + G)
+    C1p = np.sqrt(a1p ** 2 + b1 ** 2)
+    C2p = np.sqrt(a2p ** 2 + b2 ** 2)
+
+    h1p = np.degrees(np.arctan2(b1, a1p)) % 360.0
+    h2p = np.degrees(np.arctan2(b2, a2p)) % 360.0
+
+    dLp = L2 - L1
+    dCp = C2p - C1p
+    both_nonzero = (C1p * C2p) > 0
+    hdiff = h2p - h1p
+    dhp = np.where(~both_nonzero, 0.0,
+          np.where(np.abs(hdiff) <= 180.0, hdiff,
+          np.where(hdiff > 180.0, hdiff - 360.0, hdiff + 360.0)))
+    dHp = 2.0 * np.sqrt(C1p * C2p) * np.sin(np.radians(dhp / 2.0))
+
+    Lbarp = (L1 + L2) / 2.0
+    Cbarp = (C1p + C2p) / 2.0
+    hsum = h1p + h2p
+    hbarp = np.where(~both_nonzero, hsum,
+            np.where(np.abs(h1p - h2p) <= 180.0, hsum / 2.0,
+            np.where(hsum < 360.0, (hsum + 360.0) / 2.0,
+                     (hsum - 360.0) / 2.0)))
+
+    T = (1.0
+         - 0.17 * np.cos(np.radians(hbarp - 30.0))
+         + 0.24 * np.cos(np.radians(2.0 * hbarp))
+         + 0.32 * np.cos(np.radians(3.0 * hbarp + 6.0))
+         - 0.20 * np.cos(np.radians(4.0 * hbarp - 63.0)))
+
+    SL = 1.0 + 0.015 * (Lbarp - 50.0) ** 2 / np.sqrt(20.0 + (Lbarp - 50.0) ** 2)
+    SC = 1.0 + 0.045 * Cbarp
+    SH = 1.0 + 0.015 * Cbarp * T
+
+    Cbarp7 = Cbarp ** 7
+    RC = 2.0 * np.sqrt(Cbarp7 / (Cbarp7 + 25.0 ** 7))
+    dtheta = 30.0 * np.exp(-((hbarp - 275.0) / 25.0) ** 2)
+    RT = -np.sin(np.radians(2.0 * dtheta)) * RC
+
+    return np.sqrt(
+        (dLp / SL) ** 2
+        + (dCp / SC) ** 2
+        + (dHp / SH) ** 2
+        + RT * (dCp / SC) * (dHp / SH)
+    )
+
+
 def rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
     """Convert RGB array to CIELAB color space via XYZ.
 
@@ -109,10 +175,16 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         kmeans.batch_size = min(10000, len(pixels_lab))
         labels = kmeans.fit_predict(pixels_lab)
 
-    # Get cluster centers in RGB
+    # Get cluster centers in RGB.
+    # Use only foreground pixels when a mask is provided so that
+    # transparent (typically black) background pixels do not bias the
+    # cluster center toward black and corrupt palette matching.
     center_rgbs = []
     for label_idx in range(n_colors):
-        mask = labels == label_idx
+        if fg_mask is not None:
+            mask = fg_flat & (labels == label_idx)
+        else:
+            mask = labels == label_idx
         if mask.any():
             mean_rgb = pixels[mask].mean(axis=0)
             clamped = np.clip(mean_rgb, 0, 255).astype(int)
@@ -121,33 +193,62 @@ def quantize_colors(image: np.ndarray, n_colors: int,
         else:
             center_rgbs.append((128, 128, 128))
 
-    # Snap to nearest thread palette colors
+    # Snap to nearest thread palette colors.
+    # Use globally-optimal greedy assignment (sort all cluster-palette
+    # pairs by ΔE2000 and assign in order) instead of sequential
+    # first-come-first-served, so that no cluster is forced to a far
+    # palette color simply because it was processed after another cluster
+    # that claimed the same nearest entry.
     if use_thread_palette:
         palette_rgb = np.array([t[:3] for t in thread_pal], dtype=np.float64)
         palette_lab = rgb_to_lab(palette_rgb)
-        snapped_palette = []
-        used_indices = set()
+        n_clusters = len(center_rgbs)
+        n_palette = len(thread_pal)
 
-        for rgb in center_rgbs:
-            center_lab = rgb_to_lab(np.array([[rgb]], dtype=np.float64))[0, 0]
-            dists = np.sqrt(np.sum((palette_lab - center_lab) ** 2, axis=1))
-            sorted_idx = np.argsort(dists)
-            nearest = sorted_idx[0]
-            nearest_dist = dists[nearest]
-            # Find best available (unused) palette color
-            chosen = nearest
-            for idx in sorted_idx:
-                if idx not in used_indices or len(used_indices) >= len(thread_pal):
-                    chosen = idx
-                    break
-            # If the available color is much farther than the nearest,
-            # allow a duplicate to avoid snapping to a wrong color
-            # (e.g. gray → teal).  The merge step will later collapse
-            # duplicate palette entries.
-            if dists[chosen] > nearest_dist * 2.5 and nearest_dist < 20:
-                chosen = nearest
-            used_indices.add(chosen)
-            rgb = thread_pal[chosen][:3]
+        # Full ΔE2000 cost matrix: shape (n_clusters, n_palette)
+        cost_matrix = np.zeros((n_clusters, n_palette))
+        for ci, rgb in enumerate(center_rgbs):
+            center_lab = rgb_to_lab(
+                np.array([[rgb]], dtype=np.float64))[0, 0]
+            cost_matrix[ci] = delta_e_2000(palette_lab, center_lab)
+
+        nearest_dists = cost_matrix.min(axis=1)
+        nearest_indices = cost_matrix.argmin(axis=1)
+
+        # Greedy assignment: process all pairs in distance order.
+        # This ensures the globally closest cluster-palette pair is
+        # satisfied before resolving conflicts.
+        pairs = sorted(
+            ((cost_matrix[ci, pi], ci, pi)
+             for ci in range(n_clusters) for pi in range(n_palette))
+        )
+        assigned: dict[int, int] = {}   # cluster_idx → palette_idx
+        used_palette: set[int] = set()
+
+        for _d, ci, pi in pairs:
+            if ci in assigned:
+                continue
+            if pi not in used_palette:
+                assigned[ci] = pi
+                used_palette.add(pi)
+            if len(assigned) == n_clusters:
+                break
+
+        # Fallback for any cluster still unassigned (palette exhausted)
+        for ci in range(n_clusters):
+            if ci not in assigned:
+                assigned[ci] = int(nearest_indices[ci])
+
+        # If the assigned color is much farther than the unconstrained
+        # nearest, allow a duplicate so the merge step can collapse them.
+        for ci in range(n_clusters):
+            pi = assigned[ci]
+            if cost_matrix[ci, pi] > nearest_dists[ci] * 2.5:
+                assigned[ci] = int(nearest_indices[ci])
+
+        snapped_palette = []
+        for ci in range(n_clusters):
+            rgb = thread_pal[assigned[ci]][:3]
             snapped_palette.append((int(rgb[0]), int(rgb[1]), int(rgb[2])))
 
         final_palette = snapped_palette
@@ -162,7 +263,7 @@ def quantize_colors(image: np.ndarray, n_colors: int,
     # as separate thread colors.
     if merge_close:
         label_map, final_palette = merge_close_clusters(
-            label_map, final_palette, min_delta_e=15.0,
+            label_map, final_palette, min_delta_e=10.0,
         )
 
     return label_map, final_palette
@@ -171,9 +272,9 @@ def quantize_colors(image: np.ndarray, n_colors: int,
 def merge_close_clusters(
     label_map: np.ndarray,
     palette: List[Tuple[int, int, int]],
-    min_delta_e: float = 15.0,
+    min_delta_e: float = 10.0,
 ) -> Tuple[np.ndarray, List[Tuple[int, int, int]]]:
-    """Merge clusters whose LAB distance is below threshold.
+    """Merge clusters whose CIEDE2000 distance is below threshold.
 
     Iteratively finds the closest pair of colors and merges them
     (reassigning the smaller cluster to the larger one) until all
@@ -182,8 +283,8 @@ def merge_close_clusters(
     Args:
         label_map: (H, W) integer label array.
         palette: List of (R, G, B) tuples, one per label.
-        min_delta_e: Minimum Delta-E (LAB Euclidean) between any
-            two colors to keep them as separate thread colors.
+        min_delta_e: Minimum ΔE2000 between any two colors to keep
+            them as separate thread colors.
 
     Returns:
         (merged_label_map, merged_palette) with renumbered labels.
@@ -218,7 +319,7 @@ def merge_close_clusters(
         for ii in range(len(active_list)):
             for jj in range(ii + 1, len(active_list)):
                 a, b = active_list[ii], active_list[jj]
-                d = np.sqrt(np.sum((palette_lab[a] - palette_lab[b]) ** 2))
+                d = float(delta_e_2000(palette_lab[a], palette_lab[b]))
                 if d < best_dist:
                     best_dist = d
                     best_pair = (a, b)
