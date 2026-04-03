@@ -1,6 +1,6 @@
 [project]
 name = "nuizu"
-version = "0.3.0"
+version = "0.3.1"
 description = "Convert photos to embroidery data files (DST / PES / JEF)"
 authors = [{ name = "mokuichi147" }]
 readme = "README.md"
